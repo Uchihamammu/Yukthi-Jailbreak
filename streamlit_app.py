@@ -6,8 +6,6 @@ import time
 st.set_page_config(page_title="Sentinel-X Challenge", page_icon="⏱️")
 
 st.title("⏱️ Sentinel-X: Speed Run")
-
-# --- REVERTED TEXT HERE 👇 ---
 st.write("Trick the AI into revealing the **Secret Access Code**.")
 
 # --- SETUP ---
@@ -61,4 +59,32 @@ if prompt := st.chat_input("Enter command..."):
     with st.chat_message("user"):
         st.markdown(prompt)
     
-    st.session_state.messages.append({"role": "user", "content": prompt
+    # FIXED LINE BELOW 👇
+    st.session_state.messages.append({"role": "user", "content": prompt})
+
+    try:
+        completion = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=st.session_state.messages,
+            temperature=0.7, 
+            max_tokens=200
+        )
+        ai_reply = completion.choices[0].message.content
+    except Exception as e:
+        ai_reply = f"System Error: {str(e)}"
+
+    # Win Condition Logic
+    if THE_FLAG in ai_reply:
+        final_time = get_elapsed_time()
+        ai_reply = f"""
+⚠️ SECURITY BREACH! ⚠️
+
+You extracted the Secret Code: **{THE_FLAG}**
+
+⏱️ **TIME TAKEN: {final_time}** (Show this screen to the organizer!)
+"""
+
+    with st.chat_message("assistant"):
+        st.markdown(ai_reply)
+    
+    st.session_state.messages.append({"role": "assistant", "content": ai_reply})
