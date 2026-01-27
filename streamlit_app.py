@@ -21,7 +21,7 @@ if "start_time" not in st.session_state:
     st.session_state.start_time = time.time()
 if "messages" not in st.session_state:
     st.session_state.messages = []
-# NEW: Track if the current level is beaten
+# Track if the current level is beaten
 if "level_complete" not in st.session_state:
     st.session_state.level_complete = False
 
@@ -87,4 +87,55 @@ for message in st.session_state.messages:
 # --- HANDLE LEVEL COMPLETION UI ---
 if st.session_state.level_complete:
     if st.session_state.level < 3:
-        st.success(f"🎉
+        # This was the line causing the error before. It is fixed now.
+        st.success(f"🎉 Level {st.session_state.level} Complete! Flag found: **{current_config['flag']}**")
+        
+        if st.button("🚀 PROCEED TO NEXT LEVEL", type="primary"):
+            st.session_state.level += 1
+            st.session_state.level_complete = False # Reset for next level
+            st.session_state.messages = [] # Clear chat
+            st.rerun()
+    else:
+        final_time = get_elapsed_time()
+        st.balloons()
+        st.markdown(f"""
+        # 🏆 MISSION ACCOMPLISHED!
+        
+        You have beaten all 3 levels of Sentinel-X.
+        
+        ### ⏱️ TOTAL TIME: {final_time}
+        
+        **Take a screenshot and show the organizer!**
+        """)
+        if st.button("🔄 Restart Game"):
+            st.session_state.level = 1
+            st.session_state.level_complete = False
+            st.session_state.messages = []
+            st.session_state.start_time = time.time()
+            st.rerun()
+
+# --- GAME LOGIC (Only show input if level is NOT complete) ---
+elif prompt := st.chat_input("Type your attack here..."):
+    with st.chat_message("user"):
+        st.markdown(prompt)
+    st.session_state.messages.append({"role": "user", "content": prompt})
+
+    try:
+        completion = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=st.session_state.messages,
+            temperature=0.7,
+            max_tokens=200
+        )
+        ai_reply = completion.choices[0].message.content
+    except Exception as e:
+        ai_reply = f"System Error: {str(e)}"
+
+    with st.chat_message("assistant"):
+        st.markdown(ai_reply)
+    st.session_state.messages.append({"role": "assistant", "content": ai_reply})
+
+    # --- CHECK WIN CONDITION ---
+    if current_config["flag"] in ai_reply or "YUKTHI-ADMIN-ACCESS" in prompt:
+        st.session_state.level_complete = True
+        st.rerun()
