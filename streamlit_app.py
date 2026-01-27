@@ -21,6 +21,9 @@ if "start_time" not in st.session_state:
     st.session_state.start_time = time.time()
 if "messages" not in st.session_state:
     st.session_state.messages = []
+# NEW: Track if the current level is beaten
+if "level_complete" not in st.session_state:
+    st.session_state.level_complete = False
 
 # --- LEVEL DEFINITIONS ---
 def get_level_config(level):
@@ -61,9 +64,8 @@ def get_elapsed_time():
 st.title(f"🎮 {current_config['title']}")
 st.progress(st.session_state.level / 3)
 
-st.info(f"💡 **CLUE:** {current_config['clue']}")
-# We hide the actual flag from the user, they have to find it!
-# But the code checks for it automatically.
+if not st.session_state.level_complete:
+    st.info(f"💡 **CLUE:** {current_config['clue']}")
 
 # --- INITIALIZE CHAT ---
 if not st.session_state.messages:
@@ -75,8 +77,36 @@ for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-# --- GAME LOGIC ---
-if prompt := st.chat_input("Type your attack here..."):
+# --- HANDLE LEVEL COMPLETION UI ---
+if st.session_state.level_complete:
+    if st.session_state.level < 3:
+        st.success(f"🎉 Level {st.session_state.level} Complete! Flag found: **{current_config['flag']}**")
+        if st.button("🚀 PROCEED TO NEXT LEVEL", type="primary"):
+            st.session_state.level += 1
+            st.session_state.level_complete = False # Reset for next level
+            st.session_state.messages = [] # Clear chat
+            st.rerun()
+    else:
+        final_time = get_elapsed_time()
+        st.balloons()
+        st.markdown(f"""
+        # 🏆 MISSION ACCOMPLISHED!
+        
+        You have beaten all 3 levels of Sentinel-X.
+        
+        ### ⏱️ TOTAL TIME: {final_time}
+        
+        **Take a screenshot and show the organizer!**
+        """)
+        if st.button("🔄 Restart Game"):
+            st.session_state.level = 1
+            st.session_state.level_complete = False
+            st.session_state.messages = []
+            st.session_state.start_time = time.time()
+            st.rerun()
+
+# --- GAME LOGIC (Only show input if level is NOT complete) ---
+elif prompt := st.chat_input("Type your attack here..."):
     with st.chat_message("user"):
         st.markdown(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
@@ -93,30 +123,4 @@ if prompt := st.chat_input("Type your attack here..."):
         ai_reply = f"System Error: {str(e)}"
 
     with st.chat_message("assistant"):
-        st.markdown(ai_reply)
-    st.session_state.messages.append({"role": "assistant", "content": ai_reply})
-
-    # --- CHECK WIN CONDITION ---
-    # We check if the AI said the flag OR if the user typed the admin code (Backdoor)
-    if current_config["flag"] in ai_reply or "YUKTHI-ADMIN-ACCESS" in prompt:
-        
-        if st.session_state.level < 3:
-            st.balloons()
-            st.success(f"🎉 Level {st.session_state.level} Complete! You found: **{current_config['flag']}**")
-            if st.button("🚀 PROCEED TO NEXT LEVEL"):
-                st.session_state.level += 1
-                st.session_state.messages = [] # Clear chat for new level
-                st.rerun()
-        else:
-            final_time = get_elapsed_time()
-            st.balloons()
-            st.markdown(f"""
-            # 🏆 MISSION ACCOMPLISHED!
-            
-            You have beaten all 3 levels of Sentinel-X.
-            
-            ### ⏱️ TOTAL TIME: {final_time}
-            
-            **Take a screenshot and show the organizer!**
-            """)
-            st.stop()
+        st.markdown(ai
