@@ -40,7 +40,14 @@ def update_winner(name, elapsed_time):
 # --- CSS: EMOJI SPACE THEME ---
 st.markdown("""
 <style>
-    /* 1. BACKGROUND STARS */
+    /* 1. FORCE TEXT VISIBILITY (The Fix) */
+    .block-container {
+        position: relative;
+        z-index: 10 !important; /* Forces Title/Chat ABOVE the rocket */
+        background: transparent;
+    }
+    
+    /* 2. BACKGROUND STARS */
     @keyframes move-stars {
         from {background-position: 0 0, 0 0;}
         to {background-position: -1000px 500px, -500px 250px;}
@@ -55,21 +62,17 @@ st.markdown("""
         animation: move-stars 60s linear infinite;
     }
     
-    /* 2. TEXT STYLING - FORCED TO FRONT */
+    /* 3. TEXT STYLING */
     h1, h2, h3, p, div, span, label, .stMarkdown {
         color: #00ff41 !important;
         font-family: 'Courier New', monospace !important;
         text-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
-        position: relative; /* Essential for z-index to work */
-        z-index: 999; /* Very high number ensures it sits ON TOP of rocket */
     }
     
     /* Chat Avatars & Inputs */
     .stChatMessage {
         background-color: rgba(0, 10, 0, 0.9) !important;
         border: 1px solid #00ff41;
-        z-index: 999;
-        position: relative;
     }
     
     /* Icon Filter (Neon Green) */
@@ -82,11 +85,9 @@ st.markdown("""
         background-color: #050505 !important;
         color: #00ff41 !important;
         border: 1px solid #00ff41 !important;
-        position: relative;
-        z-index: 999;
     }
     
-    /* 3. ANIMATIONS */
+    /* 4. ANIMATIONS */
     @keyframes fly-horizontal {
         0% { left: -10%; transform: rotate(45deg); }
         100% { left: 110%; transform: rotate(45deg); }
@@ -104,7 +105,7 @@ st.markdown("""
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
         pointer-events: none;
-        z-index: 0; /* Low number ensures it sits BEHIND text */
+        z-index: 0; /* Sits BEHIND the .block-container */
         overflow: hidden;
     }
 
@@ -112,7 +113,7 @@ st.markdown("""
     .obj-ship { 
         position: absolute;
         font-size: 80px; 
-        top: 20%; 
+        top: 10%; 
         animation: fly-horizontal 12s linear infinite; 
     }
     
