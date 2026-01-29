@@ -3,65 +3,122 @@ from groq import Groq
 import time
 
 # --- PAGE CONFIG ---
-# Set layout to 'wide' so the background fills better
-st.set_page_config(page_title="Sentinel-X Challenge", page_icon="🎮", layout="wide")
+st.set_page_config(page_title="Sentinel-X Challenge", page_icon="🚀", layout="wide")
 
-# --- ANIMATED HACKER BACKGROUND CSS ---
+# --- SPACE THEME & ANIMATION CSS ---
 st.markdown("""
 <style>
-    /* 1. Define the Animation Keyframes */
-    @keyframes move-background {
+    /* 1. KEYFRAMES FOR ANIMATIONS */
+    @keyframes move-stars {
         from {background-position: 0 0, 0 0, 0 0;}
-        to {background-position: -1000px 0, -500px 0, -200px 0;}
+        to {background-position: -1000px 500px, -500px 250px, -200px 100px;}
+    }
+    
+    @keyframes rocket-fly {
+        0% { transform: translate(-10vw, 110vh) rotate(45deg); }
+        100% { transform: translate(110vw, -10vh) rotate(45deg); }
+    }
+    
+    @keyframes rock-float-1 {
+        0% { transform: translate(0, 0) rotate(0deg); }
+        50% { transform: translate(20px, -20px) rotate(180deg); }
+        100% { transform: translate(0, 0) rotate(360deg); }
+    }
+    
+     @keyframes rock-float-2 {
+        0% { transform: translate(0, 0) rotate(0deg); }
+        50% { transform: translate(-30px, 10px) rotate(-100deg); }
+        100% { transform: translate(0, 0) rotate(0deg); }
     }
 
-    /* 2. The Main Background Container */
+    /* 2. MAIN BACKGROUND (Starfield) */
     .stApp {
-        /* A deep dark base color */
         background-color: #02060f; 
-        
-        /* Three layers of "stars" or data dots of different sizes */
         background-image: 
             radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 5px),
             radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 3px),
             radial-gradient(white, rgba(255,255,255,.1) 1px, transparent 2px);
-            
-        /* Different sizes for depth perception */
         background-size: 550px 550px, 350px 350px, 250px 250px;
-        
-        /* The animation applied to make them move at different speeds */
-        animation: move-background 60s linear infinite;
+        animation: move-stars 100s linear infinite;
+        overflow: hidden; /* Hide scrollbars from moving objects */
     }
     
-    /* 3. ENSURE TEXT IS READABLE (Neon Green) */
+    /* 3. TEXT STYLING (Neon Green) */
     h1, h2, h3, p, li, .stMarkdown, span {
         color: #00ff41 !important;
         font-family: 'Courier New', Courier, monospace !important;
-        text-shadow: 0 0 5px rgba(0, 255, 65, 0.5); /* Slight glow */
+        text-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
+        z-index: 2; /* Text sits ON TOP of rockets */
+        position: relative;
     }
     
-    /* 4. Chat Message Styling to stand out from background */
+    /* 4. CHAT & INPUT STYLING */
     .stChatMessage {
-        background-color: rgba(0, 20, 0, 0.7) !important;
+        background-color: rgba(0, 20, 0, 0.85) !important; /* Darker to read text over stars */
         border: 1px solid #00ff41;
-        box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
+        box-shadow: 0 0 15px rgba(0, 255, 65, 0.3);
+        z-index: 2;
+        position: relative;
     }
-
-    /* 5. Input Box Styling */
     .stTextInput input {
-        background-color: rgba(0, 0, 0, 0.8) !important;
+        background-color: rgba(0, 0, 0, 0.9) !important;
         color: #00ff41 !important;
         border: 1px solid #00ff41 !important;
+        z-index: 2;
+        position: relative;
     }
     
-    /* Help center hide */
-    section[data-testid="stSidebar"] > div {
-        display: none;
+    /* 5. FLOATING OBJECTS (The Rocket & Rocks) */
+    .space-object {
+        position: fixed;
+        pointer-events: none; /* Let clicks pass through */
+        z-index: 1; /* Behind text, in front of stars */
     }
+    
+    .rocket {
+        bottom: 0;
+        left: 0;
+        font-size: 80px;
+        animation: rocket-fly 25s linear infinite;
+        opacity: 0.8;
+    }
+    
+    .rock1 {
+        top: 20%;
+        left: 10%;
+        font-size: 50px;
+        animation: rock-float-1 15s ease-in-out infinite;
+        opacity: 0.6;
+    }
+    
+    .rock2 {
+        top: 60%;
+        right: 15%;
+        font-size: 70px;
+        animation: rock-float-2 20s ease-in-out infinite;
+        opacity: 0.4;
+    }
+    
+    .rock3 {
+        top: 10%;
+        right: 30%;
+        font-size: 30px;
+        animation: rock-float-1 25s ease-in-out infinite;
+        opacity: 0.5;
+    }
+
+    /* Hide sidebar and footer */
+    section[data-testid="stSidebar"] > div { display: none; }
     footer {visibility: hidden;}
     #MainMenu {visibility: hidden;}
     
 </style>
+
+<div class="space-object rocket">🚀</div>
+<div class="space-object rock1">🪨</div>
+<div class="space-object rock2">🌑</div>
+<div class="space-object rock3">☄️</div>
+
 """, unsafe_allow_html=True)
 
 # --- API SETUP ---
@@ -127,12 +184,10 @@ def get_elapsed_time():
     return f"{minutes}m {seconds}s"
 
 # --- UI HEADER ---
-# Using columns to center the content a bit better on the wide layout
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     st.title(f"🎮 {current_config['title']}")
     st.progress(st.session_state.level / 3)
-
     if not st.session_state.level_complete:
         st.info(f"💡 **CLUE:** {current_config['clue']}")
 
@@ -141,12 +196,12 @@ if not st.session_state.messages:
     st.session_state.messages.append({"role": "system", "content": current_config["prompt"]})
 
 # --- DISPLAY CHAT HISTORY ---
-# Using columns here too to keep chat centered
 col1_chat, col2_chat, col3_chat = st.columns([1, 2, 1])
 with col2_chat:
     for message in st.session_state.messages:
         if message["role"] != "system":
-            with st.chat_message(message["role"]):
+            avatar_icon = "🧑‍💻" if message["role"] == "user" else "🤖"
+            with st.chat_message(message["role"], avatar=avatar_icon):
                 st.markdown(message["content"])
 
 # --- MAIN LOGIC ---
@@ -166,11 +221,8 @@ if st.session_state.level_complete:
             st.balloons()
             st.markdown(f"""
             # 🏆 MISSION ACCOMPLISHED!
-            
             You have beaten all 3 levels of Sentinel-X.
-            
             ### ⏱️ TOTAL TIME: {final_time}
-            
             **Take a screenshot and show the organizer!**
             """)
             if st.button("🔄 Restart Game", use_container_width=True):
@@ -181,13 +233,13 @@ if st.session_state.level_complete:
                 st.rerun()
 
 else:
-    # --- GAMEPLAY MODE (TEXT BOX VISIBLE) ---
-    # We put the chat input in the center column area
+    # --- GAMEPLAY MODE ---
     col1_in, col2_in, col3_in = st.columns([1, 2, 1])
     with col2_in:
         if prompt := st.chat_input("Type your attack here..."):
-            with col2_chat: # Display user message back in the chat area
-                with st.chat_message("user"):
+            
+            with col2_chat:
+                with st.chat_message("user", avatar="🧑‍💻"):
                     st.markdown(prompt)
             st.session_state.messages.append({"role": "user", "content": prompt})
 
@@ -202,12 +254,11 @@ else:
             except Exception as e:
                 ai_reply = f"System Error: {str(e)}"
 
-            with col2_chat: # Display AI message back in the chat area
-                with st.chat_message("assistant"):
+            with col2_chat:
+                with st.chat_message("assistant", avatar="🤖"):
                     st.markdown(ai_reply)
             st.session_state.messages.append({"role": "assistant", "content": ai_reply})
 
-            # --- CHECK WIN CONDITION ---
             if current_config["flag"].lower() in ai_reply.lower() or "YUKTHI-ADMIN-ACCESS" in prompt:
                 st.session_state.level_complete = True
                 st.rerun()
