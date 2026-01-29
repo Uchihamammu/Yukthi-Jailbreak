@@ -40,7 +40,7 @@ def update_winner(name, elapsed_time):
 # --- CSS: EMOJI SPACE THEME ---
 st.markdown("""
 <style>
-    /* 1. BACKGROUND STARS ANIMATION */
+    /* 1. BACKGROUND */
     @keyframes move-stars {
         from {background-position: 0 0, 0 0;}
         to {background-position: -1000px 500px, -500px 250px;}
@@ -55,18 +55,17 @@ st.markdown("""
         animation: move-stars 60s linear infinite;
     }
     
-    /* 2. TEXT STYLING */
+    /* 2. TEXT */
     h1, h2, h3, p, div, span, label {
         color: #00ff41 !important;
         font-family: 'Courier New', monospace !important;
         text-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
     }
     
-    /* Chat & Inputs */
     .stChatMessage {
         background-color: rgba(0, 10, 0, 0.9) !important;
         border: 1px solid #00ff41;
-        z-index: 10;
+        z-index: 100;
         position: relative;
     }
     .stTextInput input {
@@ -75,25 +74,23 @@ st.markdown("""
         border: 1px solid #00ff41 !important;
     }
     
-    /* 3. EMOJI ANIMATIONS */
+    /* 3. ANIMATIONS */
     @keyframes ship-fly {
         0% { transform: translate(-10vw, 110vh) rotate(45deg); }
         100% { transform: translate(110vw, -10vh) rotate(45deg); }
     }
     
-    @keyframes rock-tumble {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-    
     @keyframes rock-drift-1 {
-        0% { left: -10%; top: 20%; }
-        100% { left: 110%; top: 80%; }
+        0% { left: -10%; top: 30%; }
+        100% { left: 110%; top: 60%; }
     }
-    
     @keyframes rock-drift-2 {
         0% { right: -10%; top: 10%; }
-        100% { right: 110%; top: 90%; }
+        100% { right: 110%; top: 80%; }
+    }
+    @keyframes rock-spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
     }
 
     /* CONTAINER */
@@ -101,36 +98,45 @@ st.markdown("""
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
         pointer-events: none;
-        z-index: 1; /* Behind text */
+        z-index: 1; /* Lowest layer */
         overflow: hidden;
     }
 
-    /* EMOJI STYLES */
+    /* EMOJIS */
     .emoji-ship {
         position: absolute;
         font-size: 80px;
         animation: ship-fly 20s linear infinite;
-        z-index: 2;
     }
     
-    .emoji-rock-wrapper-1 {
+    .emoji-rock-1 {
         position: absolute;
         font-size: 50px;
-        animation: rock-drift-1 30s linear infinite;
-    }
-    .emoji-rock-wrapper-2 {
-        position: absolute;
-        font-size: 70px;
-        animation: rock-drift-2 40s linear infinite;
+        animation: rock-drift-1 25s linear infinite;
+        /* Start animation "in the past" so it's already on screen */
+        animation-delay: -10s; 
     }
     
-    /* Inner rotation */
-    .emoji-spin {
-        display: inline-block;
-        animation: rock-tumble 10s linear infinite;
+    .emoji-rock-2 {
+        position: absolute;
+        font-size: 70px;
+        animation: rock-drift-2 30s linear infinite;
+        animation-delay: -5s;
     }
 
-    /* Hide Sidebar/Footer */
+    .emoji-rock-3 {
+        position: absolute;
+        font-size: 40px;
+        animation: rock-drift-1 35s linear infinite;
+        animation-delay: -20s;
+        top: 10%;
+    }
+    
+    .spin-inner {
+        display: inline-block;
+        animation: rock-spin 8s linear infinite;
+    }
+
     section[data-testid="stSidebar"] > div { display: none; }
     footer, #MainMenu {visibility: hidden;}
 </style>
@@ -138,16 +144,16 @@ st.markdown("""
 <div class="space-layer">
     <div class="emoji-ship">🚀</div>
     
-    <div class="emoji-rock-wrapper-1">
-        <div class="emoji-spin">🪨</div>
+    <div class="emoji-rock-1">
+        <div class="spin-inner">🪨</div>
     </div>
 
-    <div class="emoji-rock-wrapper-2">
-        <div class="emoji-spin">🌑</div>
+    <div class="emoji-rock-2">
+        <div class="spin-inner">🌑</div>
     </div>
     
-     <div class="emoji-rock-wrapper-1" style="animation-duration: 25s; top: 10%;">
-        <div class="emoji-spin">☄️</div>
+    <div class="emoji-rock-3">
+        <div class="spin-inner">☄️</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -235,7 +241,6 @@ if st.session_state.user_name == "":
 # 2. THE GAME
 # =========================================================
 else:
-    # LOCK DEVICE AFTER LEVEL 1
     if st.session_state.level > 1:
          components.html("""<script>localStorage.setItem('sentinel_played', 'true');</script>""", height=0)
 
