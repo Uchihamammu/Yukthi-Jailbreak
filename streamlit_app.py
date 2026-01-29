@@ -77,11 +77,17 @@ st.markdown("""
         text-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
     }
     
-    /* Input Box */
+    /* INPUT BOX STYLING (UPDATED: NO GREEN BORDER) */
     .stTextInput input, .stChatInput input, textarea {
         background-color: #050505 !important;
-        color: #00ff41 !important;
-        border: 1px solid #00ff41 !important;
+        color: #00ff41 !important; /* Text is still green */
+        border: 1px solid #333333 !important; /* Border is Dark Grey */
+    }
+    
+    /* Remove the blue/green focus glow when clicking */
+    .stTextInput input:focus, .stChatInput input:focus, textarea:focus {
+        border-color: #555555 !important;
+        box-shadow: none !important;
     }
     
     /* Chat Bubbles */
@@ -258,13 +264,14 @@ else:
                     st.session_state.level_complete = True
                     st.rerun()
         
-        # --- AUTO-FOCUS HACK ---
-        # This forces the cursor back into the chat box after every interaction
+        # --- AUTO-SCROLL & FOCUS SCRIPT ---
         components.html("""
             <script>
+                // 1. Auto-Focus Input
                 var input = window.parent.document.querySelector("textarea[data-testid='stChatInputTextArea']");
-                if (input) {
-                    input.focus();
-                }
+                if (input) { input.focus(); }
+                
+                // 2. Auto-Scroll to Bottom
+                window.parent.document.querySelector('section.main').scrollTo(0, window.parent.document.querySelector('section.main').scrollHeight);
             </script>
         """, height=0)
