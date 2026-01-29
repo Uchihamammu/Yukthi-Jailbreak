@@ -40,19 +40,9 @@ def update_winner(name, elapsed_time):
 # --- CSS: EMOJI SPACE THEME ---
 st.markdown("""
 <style>
-    /* 1. FORCE TEXT VISIBILITY */
-    .block-container {
-        position: relative;
-        z-index: 10 !important; 
-        background: transparent;
-    }
-    
-    /* 2. BACKGROUND STARS */
-    @keyframes move-stars {
-        from {background-position: 0 0, 0 0;}
-        to {background-position: -1000px 500px, -500px 250px;}
-    }
-    
+    /* =========================================
+       LAYER 0: THE STARS (Background)
+       ========================================= */
     .stApp {
         background-color: #02060f; 
         background-image: 
@@ -62,21 +52,50 @@ st.markdown("""
         animation: move-stars 60s linear infinite;
     }
     
-    /* 3. TEXT STYLING */
+    @keyframes move-stars {
+        from {background-position: 0 0, 0 0;}
+        to {background-position: -1000px 500px, -500px 250px;}
+    }
+
+    /* =========================================
+       LAYER 1: THE ROCKET (Animation Container)
+       ========================================= */
+    .space-layer {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        pointer-events: none; /* Let clicks pass through to the app */
+        z-index: 0; /* Behind the text */
+        overflow: hidden;
+    }
+
+    /* =========================================
+       LAYER 2: THE CONTENT (Text, Inputs)
+       ========================================= */
+    /* Force Streamlit content to sit ON TOP of the rocket */
+    .block-container, header, .stBottom {
+        position: relative;
+        z-index: 2 !important;
+        background: transparent;
+    }
+
+    /* Text Colors */
     h1, h2, h3, p, div, span, label, .stMarkdown {
         color: #00ff41 !important;
         font-family: 'Courier New', monospace !important;
         text-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
-        position: relative;
-        z-index: 999;
     }
     
-    /* Chat Avatars & Inputs */
+    /* Input Box Styling */
+    .stTextInput input, .stChatInput input, textarea {
+        background-color: #050505 !important;
+        color: #00ff41 !important;
+        border: 1px solid #00ff41 !important;
+    }
+    
+    /* Chat Avatars */
     .stChatMessage {
         background-color: rgba(0, 10, 0, 0.9) !important;
         border: 1px solid #00ff41;
-        z-index: 999;
-        position: relative;
     }
     
     /* Icon Filter (Neon Green) */
@@ -85,15 +104,9 @@ st.markdown("""
          filter: brightness(0) saturate(100%) invert(69%) sepia(96%) saturate(1863%) hue-rotate(87deg) brightness(119%) contrast(119%);
     }
 
-    .stTextInput input {
-        background-color: #050505 !important;
-        color: #00ff41 !important;
-        border: 1px solid #00ff41 !important;
-        position: relative;
-        z-index: 999;
-    }
-    
-    /* 4. ANIMATIONS */
+    /* =========================================
+       ANIMATIONS
+       ========================================= */
     @keyframes fly-horizontal {
         0% { left: -10%; transform: rotate(45deg); }
         100% { left: 110%; transform: rotate(45deg); }
@@ -106,20 +119,11 @@ st.markdown("""
         100% { transform: translateY(0px) rotate(0deg); }
     }
 
-    /* CONTAINER - SET TO BACK */
-    .space-layer {
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        pointer-events: none;
-        z-index: 0;
-        overflow: hidden;
-    }
-
-    /* OBJECT STYLES */
+    /* Object Positions */
     .obj-ship { 
         position: absolute;
         font-size: 80px; 
-        top: 10%; 
+        top: 20%; 
         animation: fly-horizontal 12s linear infinite; 
     }
     
@@ -132,6 +136,7 @@ st.markdown("""
     .obj-rock2 { font-size: 90px; bottom: 10%; left: 5%; animation-delay: -4s; opacity: 0.6; }
     .obj-comet { font-size: 50px; top: 60%; right: 25%; animation-delay: -1s; opacity: 0.7; }
 
+    /* Hiding Standard Elements */
     section[data-testid="stSidebar"] > div { display: none; }
     footer, #MainMenu {visibility: hidden;}
 </style>
@@ -191,9 +196,6 @@ if st.session_state.user_name == "":
 
         if name_input == "SHOW-ME-THE-LOGS":
             st.warning("🕵️ ADMIN ACCESS GRANTED")
-            if st.button("🔓 Unban This Device"):
-                components.html("""<script>localStorage.removeItem('sentinel_played');</script>""", height=0)
-                st.success("Device Unbanned! Refresh page.")
             if os.path.exists(LOG_FILE):
                 st.dataframe(pd.read_csv(LOG_FILE), use_container_width=True)
                 with open(LOG_FILE, "rb") as file:
@@ -211,29 +213,10 @@ if st.session_state.user_name == "":
             else:
                 st.warning("Please enter a name!")
 
-    # CHECK DEVICE LOCK
-    components.html("""
-    <script>
-        const played = localStorage.getItem('sentinel_played');
-        if (played === 'true') {
-            const buttons = window.parent.document.querySelectorAll('.stButton');
-            buttons.forEach(btn => btn.style.display = 'none');
-            const msg = window.parent.document.createElement('div');
-            msg.innerHTML = "🚫 ACCESS DENIED<br>Device Locked.";
-            msg.style.cssText = "background:rgba(50,0,0,0.9); border:2px solid red; color:red; padding:20px; text-align:center; font-family:Courier New; margin-top:20px;";
-            const cols = window.parent.document.querySelectorAll('[data-testid="stVerticalBlock"]');
-            if(cols.length > 0) cols[1].appendChild(msg);
-        }
-    </script>
-    """, height=0)
-
 # =========================================================
 # 2. THE GAME
 # =========================================================
 else:
-    if st.session_state.level > 1:
-         components.html("""<script>localStorage.setItem('sentinel_played', 'true');</script>""", height=0)
-
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.write(f"👤 Candidate: **{st.session_state.user_name}**")
@@ -257,7 +240,7 @@ else:
         col1_end, col2_end, col3_end = st.columns([1, 2, 1])
         with col2_end:
             if st.session_state.level < 3:
-                # --- FIXED: NOW SHOWS THE FLAG ---
+                # SHOW THE FLAG ON WIN
                 st.success(f"🎉 Level {st.session_state.level} Complete! Flag: **{current_config['flag']}**")
                 
                 if st.button("🚀 NEXT LEVEL", type="primary", use_container_width=True):
@@ -279,8 +262,6 @@ else:
             if prompt := st.chat_input("Type attack..."):
                 if prompt == "SHOW-ME-THE-LOGS":
                     st.warning("Admin Access")
-                    if st.button("🔓 Unban Device"):
-                         components.html("""<script>localStorage.removeItem('sentinel_played');</script>""", height=0)
                     if os.path.exists(LOG_FILE): st.dataframe(pd.read_csv(LOG_FILE))
                     st.stop()
 
