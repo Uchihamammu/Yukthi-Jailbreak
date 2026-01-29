@@ -40,10 +40,10 @@ def update_winner(name, elapsed_time):
 # --- CSS: EMOJI SPACE THEME ---
 st.markdown("""
 <style>
-    /* 1. FORCE TEXT VISIBILITY (The Fix) */
+    /* 1. FORCE TEXT VISIBILITY */
     .block-container {
         position: relative;
-        z-index: 10 !important; /* Forces Title/Chat ABOVE the rocket */
+        z-index: 10 !important; 
         background: transparent;
     }
     
@@ -67,12 +67,16 @@ st.markdown("""
         color: #00ff41 !important;
         font-family: 'Courier New', monospace !important;
         text-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
+        position: relative;
+        z-index: 999;
     }
     
     /* Chat Avatars & Inputs */
     .stChatMessage {
         background-color: rgba(0, 10, 0, 0.9) !important;
         border: 1px solid #00ff41;
+        z-index: 999;
+        position: relative;
     }
     
     /* Icon Filter (Neon Green) */
@@ -85,6 +89,8 @@ st.markdown("""
         background-color: #050505 !important;
         color: #00ff41 !important;
         border: 1px solid #00ff41 !important;
+        position: relative;
+        z-index: 999;
     }
     
     /* 4. ANIMATIONS */
@@ -105,7 +111,7 @@ st.markdown("""
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
         pointer-events: none;
-        z-index: 0; /* Sits BEHIND the .block-container */
+        z-index: 0;
         overflow: hidden;
     }
 
@@ -251,7 +257,9 @@ else:
         col1_end, col2_end, col3_end = st.columns([1, 2, 1])
         with col2_end:
             if st.session_state.level < 3:
-                st.success(f"🎉 Level {st.session_state.level} Complete!")
+                # --- FIXED: NOW SHOWS THE FLAG ---
+                st.success(f"🎉 Level {st.session_state.level} Complete! Flag: **{current_config['flag']}**")
+                
                 if st.button("🚀 NEXT LEVEL", type="primary", use_container_width=True):
                     st.session_state.level += 1
                     st.session_state.level_complete = False 
