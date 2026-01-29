@@ -3,12 +3,11 @@ from groq import Groq
 import time
 import pandas as pd
 import os
-import streamlit.components.v1 as components
 
 # --- PAGE CONFIG ---
 st.set_page_config(page_title="Sentinel-X Challenge", page_icon="🚀", layout="wide")
 
-# --- FILE DATABASE SETUP ---
+# --- FILE DATABASE SETUP (Crash-Proof) ---
 LOG_FILE = "mission_logs.csv"
 
 def init_log_file():
@@ -19,27 +18,31 @@ def init_log_file():
 def log_participant(name):
     init_log_file()
     df = pd.read_csv(LOG_FILE)
-    if name not in df["Name"].values:
-        new_entry = pd.DataFrame([{
-            "Name": name, 
-            "Status": "Started", 
-            "Time": "0m 0s", 
-            "Timestamp": time.strftime("%H:%M:%S")
-        }])
-        df = pd.concat([df, new_entry], ignore_index=True)
-        df.to_csv(LOG_FILE, index=False)
+    # Even if they come back, we log them again so you can see they retried
+    new_entry = pd.DataFrame([{
+        "Name": name, 
+        "Status": "Started", 
+        "Time": "0m 0s", 
+        "Timestamp": time.strftime("%H:%M:%S")
+    }])
+    df = pd.concat([df, new_entry], ignore_index=True)
+    df.to_csv(LOG_FILE, index=False)
 
 def update_winner(name, elapsed_time):
     init_log_file()
     df = pd.read_csv(LOG_FILE)
+    # Mark the most recent entry for this user as complete
     if name in df["Name"].values:
-        df.loc[df["Name"] == name, "Status"] = "MISSION COMPLETE"
-        df.loc[df["Name"] == name, "Time"] = elapsed_time
+        # Get the index of the last occurrence of this name
+        idx = df[df["Name"] == name].last_valid_index()
+        df.at[idx, "Status"] = "MISSION COMPLETE"
+        df.at[idx, "Time"] = elapsed_time
         df.to_csv(LOG_FILE, index=False)
 
-# --- CSS: SPACE THEME ---
+# --- CSS: SPACE THEME + ANIMATIONS ---
 st.markdown("""
 <style>
+    /* 1. ANIMATIONS */
     @keyframes move-stars {
         from {background-position: 0 0, 0 0, 0 0;}
         to {background-position: -1000px 500px, -500px 250px, -200px 100px;}
@@ -53,6 +56,8 @@ st.markdown("""
         50% { transform: translateY(-20px) rotate(10deg); }
         100% { transform: translateY(0px) rotate(0deg); }
     }
+
+    /* 2. BACKGROUND */
     .stApp {
         background-color: #02060f; 
         background-image: 
@@ -62,6 +67,8 @@ st.markdown("""
         background-size: 550px 550px, 350px 350px, 250px 250px;
         animation: move-stars 60s linear infinite;
     }
+    
+    /* 3. TEXT & UI */
     h1, h2, h3, p, li, span, div {
         color: #00ff41 !important;
         font-family: 'Courier New', Courier, monospace !important;
@@ -78,6 +85,8 @@ st.markdown("""
         color: #00ff41 !important;
         border: 1px solid #00ff41 !important;
     }
+
+    /* 4. ROCKET CONTAINER */
     .rocket-container {
         position: fixed;
         top: 0; left: 0; width: 100vw; height: 100vh;
@@ -97,21 +106,10 @@ st.markdown("""
         opacity: 0.6;
         animation: rock-float 5s ease-in-out infinite;
     }
+    
+    /* Hide default Streamlit elements */
     section[data-testid="stSidebar"] > div { display: none; }
     footer, #MainMenu {visibility: hidden;}
-    
-    /* Device Lock Overlay */
-    #device-lock-screen {
-        display: none;
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: black;
-        z-index: 9999;
-        text-align: center;
-        padding-top: 20%;
-        color: red;
-        font-size: 2em;
-    }
 </style>
 
 <div class="rocket-container">
@@ -120,7 +118,6 @@ st.markdown("""
     <div class="rock" style="top: 60%; right: 15%;">🌑</div>
     <div class="rock" style="top: 10%; right: 30%;">☄️</div>
 </div>
-<div id="device-lock-screen">⚠️ ACCESS DENIED ⚠️<br>Level 1 already completed on this device.</div>
 """, unsafe_allow_html=True)
 
 # --- API SETUP ---
@@ -181,22 +178,9 @@ def get_level_config(level):
 current_config = get_level_config(st.session_state.level)
 
 # =========================================================
-# 1. LOGIN SCREEN (With Device Check)
+# 1. LOGIN SCREEN
 # =========================================================
 if st.session_state.user_name == "":
-    
-    # 🔒 JS TO CHECK AND LOCK DEVICE
-    # This runs in the browser. If 'sentinel_L1_done' exists, it shows the red lock screen.
-    components.html("""
-    <script>
-        const locked = localStorage.getItem('sentinel_L1_done');
-        if (locked === 'true') {
-            window.parent.document.getElementById('device-lock-screen').style.display = 'block';
-            window.parent.document.querySelector('.stApp').style.display = 'none'; // Hide the app
-        }
-    </script>
-    """, height=0)
-
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.markdown("<br><br><br>", unsafe_allow_html=True)
@@ -205,27 +189,27 @@ if st.session_state.user_name == "":
         
         name_input = st.text_input("Candidate Name", placeholder="Type your name here...")
         
-        # --- ADMIN VIEW ---
+        # --- ADMIN VIEW FOR LOGS ---
         if name_input == "SHOW-ME-THE-LOGS":
             st.warning("🕵️ ADMIN ACCESS GRANTED")
-            
-            # --- ADMIN RESET BUTTON (Unlocks the device) ---
-            if st.button("🔓 UNLOCK THIS DEVICE (Reset)", type="primary"):
-                components.html("""<script>localStorage.removeItem('sentinel_L1_done'); alert('Device Unlocked!');</script>""", height=0)
-                st.success("Device memory cleared. Refresh page.")
-            
             if os.path.exists(LOG_FILE):
                 df = pd.read_csv(LOG_FILE)
                 st.dataframe(df, use_container_width=True)
+                # Option to Download the CSV
                 with open(LOG_FILE, "rb") as file:
                     st.download_button("💾 Download Logs", file, "mission_logs.csv", "text/csv")
+            else:
+                st.write("No logs found yet.")
             st.stop()
 
         if st.button("START MISSION", type="primary", use_container_width=True):
             if name_input.strip() != "":
                 st.session_state.user_name = name_input
                 st.session_state.start_time = time.time()
+                
+                # SAVE TO FILE IMMEDIATELY
                 log_participant(name_input)
+                
                 st.rerun()
             else:
                 st.warning("⚠️ Please enter a name!")
@@ -234,11 +218,6 @@ if st.session_state.user_name == "":
 # 2. THE GAME
 # =========================================================
 else:
-    # 🔒 LOCK DEVICE ON LEVEL 1 COMPLETION
-    # When Level 1 is passed, we inject this JS to permanently flag the browser.
-    if st.session_state.level > 1:
-         components.html("""<script>localStorage.setItem('sentinel_L1_done', 'true');</script>""", height=0)
-
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.write(f"👤 Candidate: **{st.session_state.user_name}**")
@@ -258,6 +237,7 @@ else:
                 with st.chat_message(message["role"], avatar=avatar_icon):
                     st.markdown(message["content"])
 
+    # --- LEVEL COMPLETE LOGIC ---
     if st.session_state.level_complete:
         col1_end, col2_end, col3_end = st.columns([1, 2, 1])
         with col2_end:
@@ -270,7 +250,10 @@ else:
                     st.rerun()
             else:
                 final_time = get_elapsed_time()
+                
+                # UPDATE FILE WITH WINNER STATUS
                 update_winner(st.session_state.user_name, final_time)
+                
                 st.balloons()
                 st.markdown(f"""
                 # 🏆 MISSION COMPLETE!
@@ -280,10 +263,14 @@ else:
                 if st.button("🔄 New Candidate (Restart)", use_container_width=True):
                     st.session_state.clear()
                     st.rerun()
+    
+    # --- GAMEPLAY & ADMIN ---
     else:
         col1_in, col2_in, col3_in = st.columns([1, 2, 1])
         with col2_in:
             if prompt := st.chat_input("Type your attack here..."):
+                
+                # ADMIN BACKDOOR
                 if prompt == "SHOW-ME-THE-LOGS":
                     st.markdown("### 🕵️ PARTICIPANT LOGS")
                     if os.path.exists(LOG_FILE):
