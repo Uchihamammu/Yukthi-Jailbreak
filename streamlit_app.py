@@ -48,7 +48,6 @@ st.markdown("""
     
     .stApp {
         background-color: #000000; 
-        /* Two layers of stars */
         background-image: 
             radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 5px),
             radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 3px);
@@ -77,23 +76,27 @@ st.markdown("""
     }
     
     /* 3. REALISTIC ANIMATIONS */
-    /* Rocket Flight Path */
     @keyframes ship-fly {
         0% { transform: translate(-10vw, 110vh) rotate(45deg); }
         100% { transform: translate(110vw, -10vh) rotate(45deg); }
     }
     
-    /* Asteroid Drift Path */
-    @keyframes asteroid-drift-1 {
-        0% { transform: translate(-10vw, 20vh) rotate(0deg); }
-        100% { transform: translate(110vw, 80vh) rotate(360deg); }
+    @keyframes asteroid-spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
     }
+    
+    @keyframes asteroid-drift-1 {
+        0% { left: -10%; top: 20%; }
+        100% { left: 110%; top: 80%; }
+    }
+    
     @keyframes asteroid-drift-2 {
-        0% { transform: translate(110vw, 10vh) rotate(0deg); }
-        100% { transform: translate(-10vw, 90vh) rotate(-360deg); }
+        0% { right: -10%; top: 10%; }
+        100% { right: 110%; top: 90%; }
     }
 
-    /* Container for space objects so they don't block clicks */
+    /* CONTAINER */
     .space-layer {
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
@@ -105,23 +108,26 @@ st.markdown("""
     /* IMAGES */
     .ship-img {
         position: absolute;
-        width: 100px; /* Adjust size */
-        opacity: 0.9;
+        width: 120px; /* Bigger ship */
         animation: ship-fly 20s linear infinite;
+        z-index: 2;
     }
     
-    .rock-img-1 {
+    .rock-wrapper-1 {
         position: absolute;
-        width: 60px;
-        opacity: 0.7;
-        animation: asteroid-drift-1 35s linear infinite;
+        width: 80px;
+        animation: asteroid-drift-1 30s linear infinite;
+    }
+    .rock-wrapper-2 {
+        position: absolute;
+        width: 100px;
+        animation: asteroid-drift-2 40s linear infinite;
     }
     
-    .rock-img-2 {
-        position: absolute;
-        width: 90px;
-        opacity: 0.6;
-        animation: asteroid-drift-2 45s linear infinite;
+    /* Inner rotation for rocks */
+    .rock-img {
+        width: 100%;
+        animation: asteroid-spin 10s linear infinite;
     }
 
     /* Hide Sidebar/Footer */
@@ -130,10 +136,15 @@ st.markdown("""
 </style>
 
 <div class="space-layer">
-    <img src="https://cdn-icons-png.flaticon.com/512/3212/3212567.png" class="ship-img" style="filter: invert(1);">
+    <img src="https://cdn-icons-png.flaticon.com/512/5269/5269550.png" class="ship-img">
     
-    <img src="https://cdn-icons-png.flaticon.com/512/7483/7483160.png" class="rock-img-1">
-    <img src="https://cdn-icons-png.flaticon.com/512/7483/7483160.png" class="rock-img-2">
+    <div class="rock-wrapper-1">
+        <img src="https://cdn-icons-png.flaticon.com/512/10606/10606161.png" class="rock-img">
+    </div>
+
+    <div class="rock-wrapper-2">
+        <img src="https://cdn-icons-png.flaticon.com/512/696/696759.png" class="rock-img">
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
