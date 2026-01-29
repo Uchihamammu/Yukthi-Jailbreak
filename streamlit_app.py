@@ -40,7 +40,7 @@ def update_winner(name, elapsed_time):
 # --- CSS: EMOJI SPACE THEME ---
 st.markdown("""
 <style>
-    /* 1. BACKGROUND */
+    /* 1. BACKGROUND STARS (Subtle movement) */
     @keyframes move-stars {
         from {background-position: 0 0, 0 0;}
         to {background-position: -1000px 500px, -500px 250px;}
@@ -55,19 +55,28 @@ st.markdown("""
         animation: move-stars 60s linear infinite;
     }
     
-    /* 2. TEXT */
+    /* 2. TEXT STYLING */
     h1, h2, h3, p, div, span, label {
         color: #00ff41 !important;
         font-family: 'Courier New', monospace !important;
         text-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
     }
     
+    /* Chat Avatars & Inputs */
     .stChatMessage {
         background-color: rgba(0, 10, 0, 0.9) !important;
         border: 1px solid #00ff41;
-        z-index: 100;
+        z-index: 10;
         position: relative;
     }
+    
+    /* Fix avatar image size and color */
+    .stChatMessage .st-emotion-cache-1p1m4ay img {
+         width: 40px;
+         height: 40px;
+         filter: brightness(0) saturate(100%) invert(69%) sepia(96%) saturate(1863%) hue-rotate(87deg) brightness(119%) contrast(119%); /* Neon Green Filter */
+    }
+
     .stTextInput input {
         background-color: #050505 !important;
         color: #00ff41 !important;
@@ -75,22 +84,19 @@ st.markdown("""
     }
     
     /* 3. ANIMATIONS */
-    @keyframes ship-fly {
-        0% { transform: translate(-10vw, 110vh) rotate(45deg); }
-        100% { transform: translate(110vw, -10vh) rotate(45deg); }
+    
+    /* ROCKET: Moves Horizontal (Left to Right) */
+    @keyframes fly-horizontal {
+        0% { left: -10%; transform: rotate(45deg); }
+        100% { left: 110%; transform: rotate(45deg); }
     }
     
-    @keyframes rock-drift-1 {
-        0% { left: -10%; top: 30%; }
-        100% { left: 110%; top: 60%; }
-    }
-    @keyframes rock-drift-2 {
-        0% { right: -10%; top: 10%; }
-        100% { right: 110%; top: 80%; }
-    }
-    @keyframes rock-spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
+    /* ROCKS: Gentle Wiggle (Stay in place) */
+    @keyframes float-wiggle {
+        0% { transform: translateY(0px) rotate(0deg); }
+        33% { transform: translateY(-15px) rotate(5deg); }
+        66% { transform: translateY(10px) rotate(-5deg); }
+        100% { transform: translateY(0px) rotate(0deg); }
     }
 
     /* CONTAINER */
@@ -98,63 +104,40 @@ st.markdown("""
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
         pointer-events: none;
-        z-index: 1; /* Lowest layer */
+        z-index: 1;
         overflow: hidden;
     }
 
-    /* EMOJIS */
-    .emoji-ship {
+    /* OBJECT STYLES */
+    
+    /* The Rocket uses the FLY animation */
+    .obj-ship { 
         position: absolute;
-        font-size: 80px;
-        animation: ship-fly 20s linear infinite;
+        font-size: 80px; 
+        top: 20%; /* Adjust height here */
+        animation: fly-horizontal 12s linear infinite; 
     }
     
-    .emoji-rock-1 {
+    /* The Rocks use the WIGGLE animation */
+    .floating-obj {
         position: absolute;
-        font-size: 50px;
-        animation: rock-drift-1 25s linear infinite;
-        /* Start animation "in the past" so it's already on screen */
-        animation-delay: -10s; 
+        animation: float-wiggle 6s ease-in-out infinite;
     }
     
-    .emoji-rock-2 {
-        position: absolute;
-        font-size: 70px;
-        animation: rock-drift-2 30s linear infinite;
-        animation-delay: -5s;
-    }
+    .obj-rock1 { font-size: 60px; top: 15%; right: 10%; animation-delay: -2s; opacity: 0.8; }
+    .obj-rock2 { font-size: 90px; bottom: 10%; left: 5%; animation-delay: -4s; opacity: 0.6; }
+    .obj-comet { font-size: 50px; top: 60%; right: 25%; animation-delay: -1s; opacity: 0.7; }
 
-    .emoji-rock-3 {
-        position: absolute;
-        font-size: 40px;
-        animation: rock-drift-1 35s linear infinite;
-        animation-delay: -20s;
-        top: 10%;
-    }
-    
-    .spin-inner {
-        display: inline-block;
-        animation: rock-spin 8s linear infinite;
-    }
-
+    /* UI HIDERS */
     section[data-testid="stSidebar"] > div { display: none; }
     footer, #MainMenu {visibility: hidden;}
 </style>
 
 <div class="space-layer">
-    <div class="emoji-ship">🚀</div>
-    
-    <div class="emoji-rock-1">
-        <div class="spin-inner">🪨</div>
-    </div>
-
-    <div class="emoji-rock-2">
-        <div class="spin-inner">🌑</div>
-    </div>
-    
-    <div class="emoji-rock-3">
-        <div class="spin-inner">☄️</div>
-    </div>
+    <div class="obj-ship">🚀</div>
+    <div class="floating-obj obj-rock1">🪨</div>
+    <div class="floating-obj obj-rock2">🌑</div>
+    <div class="floating-obj obj-comet">☄️</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -166,6 +149,11 @@ else:
     st.stop()
 
 MODEL_NAME = "llama-3.1-8b-instant"
+
+# --- ICON URLs ---
+# Using high-quality PNG icons instead of emojis
+USER_ICON = "https://cdn-icons-png.flaticon.com/512/4333/4333609.png" # Hooded Hacker
+AI_ICON = "https://cdn-icons-png.flaticon.com/512/4712/4712109.png"   # Future Robot
 
 # --- SESSION STATE ---
 if "user_name" not in st.session_state: st.session_state.user_name = ""
@@ -241,6 +229,7 @@ if st.session_state.user_name == "":
 # 2. THE GAME
 # =========================================================
 else:
+    # LOCK DEVICE AFTER LEVEL 1
     if st.session_state.level > 1:
          components.html("""<script>localStorage.setItem('sentinel_played', 'true');</script>""", height=0)
 
@@ -259,7 +248,8 @@ else:
     with col2_chat:
         for message in st.session_state.messages:
             if message["role"] != "system":
-                avatar_icon = "🧑‍💻" if message["role"] == "user" else "🤖"
+                # Use new Icon URLs here
+                avatar_icon = USER_ICON if message["role"] == "user" else AI_ICON
                 with st.chat_message(message["role"], avatar=avatar_icon):
                     st.markdown(message["content"])
 
@@ -293,7 +283,8 @@ else:
                     st.stop()
 
                 with col2_chat:
-                    with st.chat_message("user", avatar="🧑‍💻"):
+                    # Use USER Icon here
+                    with st.chat_message("user", avatar=USER_ICON):
                         st.markdown(prompt)
                 st.session_state.messages.append({"role": "user", "content": prompt})
 
@@ -303,7 +294,8 @@ else:
                 except: ai_reply = "System Error."
 
                 with col2_chat:
-                    with st.chat_message("assistant", avatar="🤖"):
+                    # Use AI Icon here
+                    with st.chat_message("assistant", avatar=AI_ICON):
                         st.markdown(ai_reply)
                 st.session_state.messages.append({"role": "assistant", "content": ai_reply})
 
