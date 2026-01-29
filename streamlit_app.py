@@ -37,7 +37,7 @@ def update_winner(name, elapsed_time):
         df.at[idx, "Time"] = elapsed_time
         df.to_csv(LOG_FILE, index=False)
 
-# --- CSS: REALISTIC SPACE THEME ---
+# --- CSS: EMOJI SPACE THEME ---
 st.markdown("""
 <style>
     /* 1. BACKGROUND STARS ANIMATION */
@@ -47,15 +47,15 @@ st.markdown("""
     }
     
     .stApp {
-        background-color: #000000; 
+        background-color: #02060f; 
         background-image: 
             radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 5px),
             radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 3px);
         background-size: 550px 550px, 350px 350px;
-        animation: move-stars 100s linear infinite;
+        animation: move-stars 60s linear infinite;
     }
     
-    /* 2. TEXT STYLING (Neon Green Console) */
+    /* 2. TEXT STYLING */
     h1, h2, h3, p, div, span, label {
         color: #00ff41 !important;
         font-family: 'Courier New', monospace !important;
@@ -75,23 +75,23 @@ st.markdown("""
         border: 1px solid #00ff41 !important;
     }
     
-    /* 3. REALISTIC ANIMATIONS */
+    /* 3. EMOJI ANIMATIONS */
     @keyframes ship-fly {
         0% { transform: translate(-10vw, 110vh) rotate(45deg); }
         100% { transform: translate(110vw, -10vh) rotate(45deg); }
     }
     
-    @keyframes asteroid-spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
+    @keyframes rock-tumble {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
     }
     
-    @keyframes asteroid-drift-1 {
+    @keyframes rock-drift-1 {
         0% { left: -10%; top: 20%; }
         100% { left: 110%; top: 80%; }
     }
     
-    @keyframes asteroid-drift-2 {
+    @keyframes rock-drift-2 {
         0% { right: -10%; top: 10%; }
         100% { right: 110%; top: 90%; }
     }
@@ -105,29 +105,29 @@ st.markdown("""
         overflow: hidden;
     }
 
-    /* IMAGES */
-    .ship-img {
+    /* EMOJI STYLES */
+    .emoji-ship {
         position: absolute;
-        width: 120px; /* Bigger ship */
+        font-size: 80px;
         animation: ship-fly 20s linear infinite;
         z-index: 2;
     }
     
-    .rock-wrapper-1 {
+    .emoji-rock-wrapper-1 {
         position: absolute;
-        width: 80px;
-        animation: asteroid-drift-1 30s linear infinite;
+        font-size: 50px;
+        animation: rock-drift-1 30s linear infinite;
     }
-    .rock-wrapper-2 {
+    .emoji-rock-wrapper-2 {
         position: absolute;
-        width: 100px;
-        animation: asteroid-drift-2 40s linear infinite;
+        font-size: 70px;
+        animation: rock-drift-2 40s linear infinite;
     }
     
-    /* Inner rotation for rocks */
-    .rock-img {
-        width: 100%;
-        animation: asteroid-spin 10s linear infinite;
+    /* Inner rotation */
+    .emoji-spin {
+        display: inline-block;
+        animation: rock-tumble 10s linear infinite;
     }
 
     /* Hide Sidebar/Footer */
@@ -136,14 +136,18 @@ st.markdown("""
 </style>
 
 <div class="space-layer">
-    <img src="https://cdn-icons-png.flaticon.com/512/5269/5269550.png" class="ship-img">
+    <div class="emoji-ship">🚀</div>
     
-    <div class="rock-wrapper-1">
-        <img src="https://cdn-icons-png.flaticon.com/512/10606/10606161.png" class="rock-img">
+    <div class="emoji-rock-wrapper-1">
+        <div class="emoji-spin">🪨</div>
     </div>
 
-    <div class="rock-wrapper-2">
-        <img src="https://cdn-icons-png.flaticon.com/512/696/696759.png" class="rock-img">
+    <div class="emoji-rock-wrapper-2">
+        <div class="emoji-spin">🌑</div>
+    </div>
+    
+     <div class="emoji-rock-wrapper-1" style="animation-duration: 25s; top: 10%;">
+        <div class="emoji-spin">☄️</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
