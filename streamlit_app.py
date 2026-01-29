@@ -6,7 +6,7 @@ import os
 import streamlit.components.v1 as components
 
 # --- PAGE CONFIG ---
-st.set_page_config(page_title="Sentinel-X Challenge", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="Sentinel-X Challenge", page_icon="🛸", layout="wide")
 
 # --- FILE DATABASE ---
 LOG_FILE = "mission_logs.csv"
@@ -37,45 +37,104 @@ def update_winner(name, elapsed_time):
         df.at[idx, "Time"] = elapsed_time
         df.to_csv(LOG_FILE, index=False)
 
-# --- CSS: SPACE THEME ---
+# --- CSS: REALISTIC SPACE THEME ---
 st.markdown("""
 <style>
-    @keyframes move-stars { from {background-position: 0 0;} to {background-position: -1000px 500px;} }
-    @keyframes rocket-fly { 0% { transform: translate(-10vw, 110vh) rotate(45deg); } 100% { transform: translate(110vw, -10vh) rotate(45deg); } }
+    /* 1. BACKGROUND STARS ANIMATION */
+    @keyframes move-stars {
+        from {background-position: 0 0, 0 0;}
+        to {background-position: -1000px 500px, -500px 250px;}
+    }
     
     .stApp {
-        background-color: #02060f; 
-        background-image: radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 5px);
-        background-size: 550px 550px;
-        animation: move-stars 60s linear infinite;
+        background-color: #000000; 
+        /* Two layers of stars */
+        background-image: 
+            radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 5px),
+            radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 3px);
+        background-size: 550px 550px, 350px 350px;
+        animation: move-stars 100s linear infinite;
     }
     
-    h1, h2, h3, p, div { color: #00ff41 !important; font-family: 'Courier New', monospace !important; }
+    /* 2. TEXT STYLING (Neon Green Console) */
+    h1, h2, h3, p, div, span, label {
+        color: #00ff41 !important;
+        font-family: 'Courier New', monospace !important;
+        text-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
+    }
     
-    .stChatMessage { background-color: rgba(0, 20, 0, 0.9) !important; border: 1px solid #00ff41; }
-    .stTextInput input { background-color: #000000 !important; color: #00ff41 !important; border: 1px solid #00ff41 !important; }
+    /* Chat & Inputs */
+    .stChatMessage {
+        background-color: rgba(0, 10, 0, 0.9) !important;
+        border: 1px solid #00ff41;
+        z-index: 10;
+        position: relative;
+    }
+    .stTextInput input {
+        background-color: #050505 !important;
+        color: #00ff41 !important;
+        border: 1px solid #00ff41 !important;
+    }
+    
+    /* 3. REALISTIC ANIMATIONS */
+    /* Rocket Flight Path */
+    @keyframes ship-fly {
+        0% { transform: translate(-10vw, 110vh) rotate(45deg); }
+        100% { transform: translate(110vw, -10vh) rotate(45deg); }
+    }
+    
+    /* Asteroid Drift Path */
+    @keyframes asteroid-drift-1 {
+        0% { transform: translate(-10vw, 20vh) rotate(0deg); }
+        100% { transform: translate(110vw, 80vh) rotate(360deg); }
+    }
+    @keyframes asteroid-drift-2 {
+        0% { transform: translate(110vw, 10vh) rotate(0deg); }
+        100% { transform: translate(-10vw, 90vh) rotate(-360deg); }
+    }
 
-    /* ROCKET */
-    .rocket-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 1; }
-    .rocket { position: absolute; font-size: 80px; animation: rocket-fly 15s linear infinite; }
+    /* Container for space objects so they don't block clicks */
+    .space-layer {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        pointer-events: none;
+        z-index: 1; /* Behind text */
+        overflow: hidden;
+    }
+
+    /* IMAGES */
+    .ship-img {
+        position: absolute;
+        width: 100px; /* Adjust size */
+        opacity: 0.9;
+        animation: ship-fly 20s linear infinite;
+    }
     
+    .rock-img-1 {
+        position: absolute;
+        width: 60px;
+        opacity: 0.7;
+        animation: asteroid-drift-1 35s linear infinite;
+    }
+    
+    .rock-img-2 {
+        position: absolute;
+        width: 90px;
+        opacity: 0.6;
+        animation: asteroid-drift-2 45s linear infinite;
+    }
+
+    /* Hide Sidebar/Footer */
     section[data-testid="stSidebar"] > div { display: none; }
     footer, #MainMenu {visibility: hidden;}
-
-    /* RED BANNED BOX (Hidden by default) */
-    #banned-message {
-        display: none;
-        background-color: rgba(50, 0, 0, 0.9);
-        border: 2px solid red;
-        color: red;
-        padding: 20px;
-        text-align: center;
-        font-size: 20px;
-        margin-top: 20px;
-    }
 </style>
 
-<div class="rocket-container"><div class="rocket">🚀</div></div>
+<div class="space-layer">
+    <img src="https://cdn-icons-png.flaticon.com/512/3212/3212567.png" class="ship-img" style="filter: invert(1);">
+    
+    <img src="https://cdn-icons-png.flaticon.com/512/7483/7483160.png" class="rock-img-1">
+    <img src="https://cdn-icons-png.flaticon.com/512/7483/7483160.png" class="rock-img-2">
+</div>
 """, unsafe_allow_html=True)
 
 # --- API SETUP ---
@@ -107,35 +166,29 @@ def get_level_config(level):
 current_config = get_level_config(st.session_state.level)
 
 # =========================================================
-# 1. LOGIN SCREEN (With Safe Ban Check)
+# 1. LOGIN SCREEN
 # =========================================================
 if st.session_state.user_name == "":
     
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.markdown("<br><br><br>", unsafe_allow_html=True)
-        st.title("🚀 Sentinel-X Login")
+        st.title("🛸 Sentinel-X Login")
         st.write("Enter your name to begin the challenge.")
         
         name_input = st.text_input("Candidate Name", placeholder="Type your name here...")
 
-        # --- ADMIN VIEW ---
         if name_input == "SHOW-ME-THE-LOGS":
             st.warning("🕵️ ADMIN ACCESS GRANTED")
-            
-            # UNBAN BUTTON (For You)
             if st.button("🔓 Unban This Device"):
                 components.html("""<script>localStorage.removeItem('sentinel_played');</script>""", height=0)
                 st.success("Device Unbanned! Refresh page.")
-            
             if os.path.exists(LOG_FILE):
                 st.dataframe(pd.read_csv(LOG_FILE), use_container_width=True)
                 with open(LOG_FILE, "rb") as file:
                     st.download_button("💾 Download Logs", file, "mission_logs.csv", "text/csv")
             st.stop()
 
-        # --- THE START BUTTON ---
-        # We put the button in a container so we can hide it if banned
         start_button = st.button("START MISSION", type="primary", use_container_width=True)
         
         if start_button:
@@ -147,22 +200,16 @@ if st.session_state.user_name == "":
             else:
                 st.warning("Please enter a name!")
 
-    # --- INVISIBLE SECURITY GUARD ---
-    # This checks if they played. If yes, it hides the Start Button using CSS.
+    # CHECK DEVICE LOCK
     components.html("""
     <script>
         const played = localStorage.getItem('sentinel_played');
         if (played === 'true') {
-            // Locate the Streamlit button and hide it
             const buttons = window.parent.document.querySelectorAll('.stButton');
             buttons.forEach(btn => btn.style.display = 'none');
-            
-            // Create a warning message
             const msg = window.parent.document.createElement('div');
-            msg.innerHTML = "🚫 DEVICE ACCESS LOCKED<br>You have already completed the challenge.";
+            msg.innerHTML = "🚫 ACCESS DENIED<br>Device Locked.";
             msg.style.cssText = "background:rgba(50,0,0,0.9); border:2px solid red; color:red; padding:20px; text-align:center; font-family:Courier New; margin-top:20px;";
-            
-            // Inject message into the middle column
             const cols = window.parent.document.querySelectorAll('[data-testid="stVerticalBlock"]');
             if(cols.length > 0) cols[1].appendChild(msg);
         }
@@ -173,7 +220,7 @@ if st.session_state.user_name == "":
 # 2. THE GAME
 # =========================================================
 else:
-    # 🔒 BAN DEVICE IF LEVEL 1 IS BEATEN
+    # LOCK DEVICE AFTER LEVEL 1
     if st.session_state.level > 1:
          components.html("""<script>localStorage.setItem('sentinel_played', 'true');</script>""", height=0)
 
