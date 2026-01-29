@@ -40,7 +40,7 @@ def update_winner(name, elapsed_time):
 # --- CSS: EMOJI SPACE THEME ---
 st.markdown("""
 <style>
-    /* 1. BACKGROUND STARS (Subtle movement) */
+    /* 1. BACKGROUND STARS */
     @keyframes move-stars {
         from {background-position: 0 0, 0 0;}
         to {background-position: -1000px 500px, -500px 250px;}
@@ -55,43 +55,43 @@ st.markdown("""
         animation: move-stars 60s linear infinite;
     }
     
-    /* 2. TEXT STYLING */
-    h1, h2, h3, p, div, span, label {
+    /* 2. TEXT STYLING - FORCED TO FRONT */
+    h1, h2, h3, p, div, span, label, .stMarkdown {
         color: #00ff41 !important;
         font-family: 'Courier New', monospace !important;
         text-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
+        position: relative; /* Essential for z-index to work */
+        z-index: 999; /* Very high number ensures it sits ON TOP of rocket */
     }
     
     /* Chat Avatars & Inputs */
     .stChatMessage {
         background-color: rgba(0, 10, 0, 0.9) !important;
         border: 1px solid #00ff41;
-        z-index: 10;
+        z-index: 999;
         position: relative;
     }
     
-    /* Fix avatar image size and color */
+    /* Icon Filter (Neon Green) */
     .stChatMessage .st-emotion-cache-1p1m4ay img {
-         width: 40px;
-         height: 40px;
-         filter: brightness(0) saturate(100%) invert(69%) sepia(96%) saturate(1863%) hue-rotate(87deg) brightness(119%) contrast(119%); /* Neon Green Filter */
+         width: 40px; height: 40px;
+         filter: brightness(0) saturate(100%) invert(69%) sepia(96%) saturate(1863%) hue-rotate(87deg) brightness(119%) contrast(119%);
     }
 
     .stTextInput input {
         background-color: #050505 !important;
         color: #00ff41 !important;
         border: 1px solid #00ff41 !important;
+        position: relative;
+        z-index: 999;
     }
     
     /* 3. ANIMATIONS */
-    
-    /* ROCKET: Moves Horizontal (Left to Right) */
     @keyframes fly-horizontal {
         0% { left: -10%; transform: rotate(45deg); }
         100% { left: 110%; transform: rotate(45deg); }
     }
     
-    /* ROCKS: Gentle Wiggle (Stay in place) */
     @keyframes float-wiggle {
         0% { transform: translateY(0px) rotate(0deg); }
         33% { transform: translateY(-15px) rotate(5deg); }
@@ -99,26 +99,23 @@ st.markdown("""
         100% { transform: translateY(0px) rotate(0deg); }
     }
 
-    /* CONTAINER */
+    /* CONTAINER - SET TO BACK */
     .space-layer {
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
         pointer-events: none;
-        z-index: 1;
+        z-index: 0; /* Low number ensures it sits BEHIND text */
         overflow: hidden;
     }
 
     /* OBJECT STYLES */
-    
-    /* The Rocket uses the FLY animation */
     .obj-ship { 
         position: absolute;
         font-size: 80px; 
-        top: 20%; /* Adjust height here */
+        top: 20%; 
         animation: fly-horizontal 12s linear infinite; 
     }
     
-    /* The Rocks use the WIGGLE animation */
     .floating-obj {
         position: absolute;
         animation: float-wiggle 6s ease-in-out infinite;
@@ -128,7 +125,6 @@ st.markdown("""
     .obj-rock2 { font-size: 90px; bottom: 10%; left: 5%; animation-delay: -4s; opacity: 0.6; }
     .obj-comet { font-size: 50px; top: 60%; right: 25%; animation-delay: -1s; opacity: 0.7; }
 
-    /* UI HIDERS */
     section[data-testid="stSidebar"] > div { display: none; }
     footer, #MainMenu {visibility: hidden;}
 </style>
@@ -151,9 +147,8 @@ else:
 MODEL_NAME = "llama-3.1-8b-instant"
 
 # --- ICON URLs ---
-# Using high-quality PNG icons instead of emojis
-USER_ICON = "https://cdn-icons-png.flaticon.com/512/4333/4333609.png" # Hooded Hacker
-AI_ICON = "https://cdn-icons-png.flaticon.com/512/4712/4712109.png"   # Future Robot
+USER_ICON = "https://cdn-icons-png.flaticon.com/512/4333/4333609.png"
+AI_ICON = "https://cdn-icons-png.flaticon.com/512/4712/4712109.png"
 
 # --- SESSION STATE ---
 if "user_name" not in st.session_state: st.session_state.user_name = ""
@@ -229,7 +224,6 @@ if st.session_state.user_name == "":
 # 2. THE GAME
 # =========================================================
 else:
-    # LOCK DEVICE AFTER LEVEL 1
     if st.session_state.level > 1:
          components.html("""<script>localStorage.setItem('sentinel_played', 'true');</script>""", height=0)
 
@@ -248,7 +242,6 @@ else:
     with col2_chat:
         for message in st.session_state.messages:
             if message["role"] != "system":
-                # Use new Icon URLs here
                 avatar_icon = USER_ICON if message["role"] == "user" else AI_ICON
                 with st.chat_message(message["role"], avatar=avatar_icon):
                     st.markdown(message["content"])
@@ -283,7 +276,6 @@ else:
                     st.stop()
 
                 with col2_chat:
-                    # Use USER Icon here
                     with st.chat_message("user", avatar=USER_ICON):
                         st.markdown(prompt)
                 st.session_state.messages.append({"role": "user", "content": prompt})
@@ -294,7 +286,6 @@ else:
                 except: ai_reply = "System Error."
 
                 with col2_chat:
-                    # Use AI Icon here
                     with st.chat_message("assistant", avatar=AI_ICON):
                         st.markdown(ai_reply)
                 st.session_state.messages.append({"role": "assistant", "content": ai_reply})
