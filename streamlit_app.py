@@ -23,10 +23,10 @@ try:
     if "api_keys" in st.secrets:
         API_KEYS = st.secrets["api_keys"]
     else:
-        # Fallback for local testing (Create a .streamlit/secrets.toml file locally if needed)
-        API_KEYS = ["MISSING_KEYS"]
+        # Fallback to prevent crash if secrets aren't set yet
+        API_KEYS = ["MISSING_KEYS"] 
 except FileNotFoundError:
-    st.error("🚨 CRITICAL: No API Keys found in Secrets!")
+    st.error("🚨 CRITICAL: No API Keys found in Secrets! Go to Manage App -> Settings -> Secrets.")
     st.stop()
 
 # --- ⚡ SPEED CACHING ---
@@ -240,7 +240,7 @@ else:
                 try:
                     clients = get_groq_client()
                     if not clients: 
-                        ai_reply = "⚠️ ERROR: SERVER KEYS MISSING."
+                        ai_reply = "⚠️ ERROR: SERVER KEYS MISSING. PLEASE CHECK SETTINGS."
                     else:
                         client = random.choice(clients)
                         completion = client.chat.completions.create(model=MODEL_NAME, messages=st.session_state.messages, temperature=0.7, max_tokens=40)
