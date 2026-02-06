@@ -247,7 +247,7 @@ else:
                         ai_reply = completion.choices[0].message.content
                 
                 except Exception as e:
-                    ai_reply = "⚠️ NETWORK LAG. RETRY."
+                    ai_reply = f"⚠️ DEBUG ERROR: {str(e)}"
                 
                 with col2_chat:
                     with st.chat_message("assistant", avatar=AI_ICON): st.markdown(ai_reply)
