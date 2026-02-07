@@ -18,7 +18,6 @@ st.set_page_config(
 )
 
 # --- 🔐 SECURE KEY LOADING ---
-# Checks Streamlit Secrets first (Cloud), then falls back to empty (Local)
 try:
     if "api_keys" in st.secrets:
         API_KEYS = st.secrets["api_keys"]
@@ -32,7 +31,6 @@ except FileNotFoundError:
 def get_groq_client():
     clients = []
     for key in API_KEYS:
-        # Only accept keys that look real (longer than 10 chars)
         if isinstance(key, str) and len(key) > 10: 
             clients.append(Groq(api_key=key))
     return clients if clients else None
@@ -105,34 +103,22 @@ st.markdown("""
         color: #00ff41 !important;
     }
 
-    /* 1. BLACK BACKGROUND */
-    .stApp {
-        background-color: #000000;
-    }
+    /* 1. MAIN APP BACKGROUND */
+    .stApp { background-color: transparent !important; }
+    body { background-color: #000000; overflow-x: hidden; }
 
     /* 2. MOVING STARS LAYER */
     .stars {
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        pointer-events: none;
-        background: transparent;
-        animation: fly-stars 100s linear infinite;
-        z-index: 0;
-        opacity: 0.5;
+        position: fixed; top: 0; left: 0; width: 100%; height: 200%;
+        pointer-events: none; color: white;
+        font-size: 20px; line-height: 100px; opacity: 0.5;
+        animation: fly-stars 50s linear infinite; z-index: -1;
     }
-    .stars::after {
-        content: " .  .   .    .   . . .   . .   .";
-        color: white;
-        font-size: 20px;
-    }
-    @keyframes fly-stars {
-        from { transform: translateY(0px); }
-        to { transform: translateY(-2000px); }
-    }
+    @keyframes fly-stars { from { transform: translateY(0); } to { transform: translateY(-50%); } }
 
-    /* 3. WIGGLY ROCKS (ASTEROIDS) */
-    .rock { position: fixed; font-size: 40px; animation: float-rock 8s ease-in-out infinite alternate; z-index: 0; opacity: 0.6; }
-    .rock-1 { top: 10%; left: 10%; animation-delay: 0s; }
+    /* 3. WIGGLY ROCKS */
+    .rock { position: fixed; font-size: 40px; animation: float-rock 6s ease-in-out infinite alternate; z-index: 0; opacity: 0.8; }
+    .rock-1 { top: 10%; left: 10%; }
     .rock-2 { top: 80%; left: 80%; animation-delay: 2s; }
     .rock-3 { top: 40%; left: 90%; animation-delay: 1s; }
     @keyframes float-rock {
@@ -141,23 +127,24 @@ st.markdown("""
     }
 
     /* 4. PLANETS */
-    .planet { position: fixed; font-size: 80px; z-index: 0; opacity: 0.8; }
-    .planet-1 { bottom: 10%; left: 5%; animation: rotate-planet 200s linear infinite; }
-    .planet-2 { top: 15%; right: 10%; animation: float-planet 30s ease-in-out infinite alternate; }
+    .planet { position: fixed; font-size: 80px; z-index: 0; opacity: 0.9; }
+    .planet-1 { bottom: 10%; left: 5%; animation: rotate-planet 100s linear infinite; }
+    .planet-2 { top: 15%; right: 10%; animation: float-planet 10s ease-in-out infinite alternate; }
     @keyframes rotate-planet { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    @keyframes float-planet { from { transform: translateY(0); } to { transform: translateY(-50px); } }
+    @keyframes float-planet { from { transform: translateY(0); } to { transform: translateY(-30px); } }
 
-    /* 5. FLYING ROCKET */
+    /* 5. FLYING ROCKET (HORIZONTAL) */
     .rocket {
         position: fixed;
         font-size: 60px;
         z-index: 0;
-        animation: fly-rocket 25s linear infinite;
-        top: 100%; left: -10%;
+        animation: fly-rocket 12s linear infinite;
+        bottom: 20%; /* Positioned near bottom */
+        left: -10%;
     }
     @keyframes fly-rocket {
-        0% { left: -10%; top: 100%; transform: rotate(45deg); }
-        100% { left: 120%; top: -20%; transform: rotate(45deg); }
+        0% { left: -10%; transform: rotate(45deg); }
+        100% { left: 110%; transform: rotate(45deg); }
     }
     
     /* 6. BOUNCING DVD LOGO */
@@ -166,37 +153,35 @@ st.markdown("""
     @keyframes bounceX { from { left: 0; } to { left: calc(100vw - 150px); } }
     @keyframes bounceY { from { top: 0; } to { top: calc(100vh - 150px); } }
 
-    /* INPUT BOX - SOLID BLACK */
+    /* UI ELEMENTS */
     .stTextInput input, .stChatInput input, textarea { 
-        background-color: #000 !important; 
-        color: #00ff41 !important; 
-        border: 1px solid #00ff41 !important;
-        z-index: 1;
+        background-color: #000 !important; color: #00ff41 !important; border: 1px solid #00ff41 !important; z-index: 1;
     }
-    
-    /* BUTTONS */
     .stButton button { 
-        background-color: #000 !important; 
-        color: #00ff41 !important; 
-        border: 1px solid #00ff41 !important;
-        font-family: 'Orbitron', sans-serif !important;
+        background-color: #000 !important; color: #00ff41 !important; border: 1px solid #00ff41 !important; font-family: 'Orbitron', sans-serif !important;
     }
-    
-    /* HEADERS */
     h1, h2, h3 {
-        font-family: 'Orbitron', sans-serif !important;
-        text-shadow: 0 0 10px #00ff41;
-        z-index: 1;
-        position: relative;
+        font-family: 'Orbitron', sans-serif !important; text-shadow: 0 0 10px #00ff41; z-index: 1; position: relative;
     }
-
-    /* HIDE STREAMLIT UI */
     section[data-testid="stSidebar"] > div { display: none; }
     footer, #MainMenu {visibility: hidden;}
     [data-testid="stImage"] { display: block; margin-left: auto; margin-right: auto; z-index: 1; position: relative; }
 </style>
 
-<div class="stars">. . . . . . . .</div>
+<div class="stars">
+    .   .    .     .      .       .     .   .   .   .   .  .   .  .
+    .      .       .       .      .     .   .   .   .   .  .   .  .
+    .   .    .     .      .       .     .   .   .   .   .  .   .  .
+    .      .       .       .      .     .   .   .   .   .  .   .  .
+    .   .    .     .      .       .     .   .   .   .   .  .   .  .
+    .      .       .       .      .     .   .   .   .   .  .   .  .
+    .   .    .     .      .       .     .   .   .   .   .  .   .  .
+    .      .       .       .      .     .   .   .   .   .  .   .  .
+    .   .    .     .      .       .     .   .   .   .   .  .   .  .
+    .      .       .       .      .     .   .   .   .   .  .   .  .
+    .   .    .     .      .       .     .   .   .   .   .  .   .  .
+    .      .       .       .      .     .   .   .   .   .  .   .  .
+</div>
 <div class="rock rock-1">🪨</div>
 <div class="rock rock-2">🪨</div>
 <div class="rock rock-3">🌑</div>
@@ -248,8 +233,6 @@ current_config = get_level_config(st.session_state.level)
 # =========================================================
 # 5. GAME INTERFACE
 # =========================================================
-
-# --- SCREEN 1: LOGIN ---
 if st.session_state.user_name == "":
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
@@ -268,8 +251,6 @@ if st.session_state.user_name == "":
                 st.session_state.start_time = time.time()
                 log_participant(name_input)
                 st.rerun()
-
-# --- SCREEN 2: MAIN GAME ---
 else:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
@@ -279,18 +260,16 @@ else:
         if not st.session_state.level_complete:
             st.info(f"📂 INTEL: {current_config['clue']}")
 
-    # Init System Message
     if not st.session_state.messages:
         st.session_state.messages.append({"role": "system", "content": current_config["prompt"]})
 
-    # Display Chat
     for msg in st.session_state.messages:
         if msg["role"] != "system":
             icon = "👤" if msg["role"] == "user" else "🤖"
             with st.chat_message(msg["role"], avatar=icon):
                 st.markdown(msg["content"])
 
-    # --- AGGRESSIVE AUTO-SCROLL ---
+    # AGGRESSIVE AUTO-SCROLL
     scroll_script = """
     <script>
         function forceScroll() {
@@ -306,7 +285,6 @@ else:
     """
     components.html(scroll_script, height=0)
 
-    # Level Complete Screen
     if st.session_state.level_complete:
         col1_e, col2_e, col3_e = st.columns([1, 2, 1])
         with col2_e:
@@ -329,7 +307,6 @@ else:
                     st.session_state.clear()
                     st.rerun()
     
-    # Chat Input
     elif prompt := st.chat_input("ENTER COMMAND..."):
         if prompt == "SHOW-ME-THE-LOGS":
              if os.path.exists(LOG_FILE): st.dataframe(pd.read_csv(LOG_FILE))
@@ -339,7 +316,6 @@ else:
         with st.chat_message("user", avatar="👤"):
             st.markdown(prompt)
 
-        # AI Response
         response_text = ""
         clients = get_groq_client()
         
@@ -362,11 +338,9 @@ else:
         with st.chat_message("assistant", avatar="🤖"):
             st.markdown(response_text)
 
-        # Check for Flag
         if current_config["flag"].lower() in response_text.lower():
             st.session_state.level_complete = True
             st.rerun()
-        # Level 3 Override Check
         elif st.session_state.level == 3 and "ROOT-OVERRIDE-SYSTEM" in prompt:
             st.session_state.level_complete = True
             st.rerun()
