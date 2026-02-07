@@ -18,6 +18,7 @@ st.set_page_config(
 )
 
 # --- 🔐 SECURE KEY LOADING ---
+# Checks Streamlit Secrets first (Cloud), then falls back to empty (Local)
 try:
     if "api_keys" in st.secrets:
         API_KEYS = st.secrets["api_keys"]
@@ -31,6 +32,7 @@ except FileNotFoundError:
 def get_groq_client():
     clients = []
     for key in API_KEYS:
+        # Only accept keys that look real (longer than 10 chars)
         if isinstance(key, str) and len(key) > 10: 
             clients.append(Groq(api_key=key))
     return clients if clients else None
@@ -45,110 +47,175 @@ def get_img_as_base64(file_path):
 
 MODEL_NAME = "llama-3.1-8b-instant"
 LOG_FILE = "mission_logs.csv"
+LOGO_FILENAME = "logo.png"
 
 # =========================================================
-# 2. VISUAL ENHANCEMENTS (CYBERPUNK UI)
+# 2. HELPER FUNCTIONS
+# =========================================================
+def play_win_sound():
+    sound_url = "https://www.soundjay.com/sci-fi/sounds/sci-fi-charge-up-01.mp3"
+    components.html(
+        f"""<audio autoplay><source src="{sound_url}" type="audio/mpeg"></audio>""",
+        height=0
+    )
+
+def init_log_file():
+    if not os.path.exists(LOG_FILE):
+        df = pd.DataFrame(columns=["Name", "Status", "Time_Seconds", "Timestamp"])
+        df.to_csv(LOG_FILE, index=False)
+
+def log_participant(name):
+    init_log_file()
+    df = pd.read_csv(LOG_FILE)
+    if name not in df["Name"].values:
+        new_entry = pd.DataFrame([{"Name": name, "Status": "Started", "Time_Seconds": 9999, "Timestamp": time.strftime("%H:%M:%S")}])
+        df = pd.concat([df, new_entry], ignore_index=True)
+        df.to_csv(LOG_FILE, index=False)
+
+def update_winner(name, elapsed_seconds):
+    init_log_file()
+    df = pd.read_csv(LOG_FILE)
+    if name in df["Name"].values:
+        idx = df[df["Name"] == name].last_valid_index()
+        if df.at[idx, "Status"] != "MISSION COMPLETE":
+            df.at[idx, "Status"] = "MISSION COMPLETE"
+            df.at[idx, "Time_Seconds"] = elapsed_seconds
+            df.to_csv(LOG_FILE, index=False)
+
+def get_leaderboard():
+    if not os.path.exists(LOG_FILE): return pd.DataFrame()
+    df = pd.read_csv(LOG_FILE)
+    winners = df[df["Status"] == "MISSION COMPLETE"].copy()
+    winners = winners.sort_values(by="Time_Seconds", ascending=True)
+    winners["Time"] = winners["Time_Seconds"].apply(lambda x: f"{int(x)}s")
+    winners.index = range(1, len(winners) + 1)
+    return winners[["Name", "Time"]].head(10)
+
+# =========================================================
+# 3. VISUAL ENHANCEMENTS (DEEP SPACE UI)
 # =========================================================
 st.markdown("""
 <style>
     /* IMPORT FUTURISTIC FONT */
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Source+Code+Pro:wght@400;700&display=swap');
     
-    /* GLOBAL RESET */
+    /* RESET */
     html, body, [class*="css"], .stMarkdown, .stTextInput, .stChatInput, p, div {
         font-family: 'Source Code Pro', monospace !important;
         color: #00ff41 !important;
-        background-color: transparent !important;
     }
-    
-    /* STAR BACKGROUND ANIMATION */
+
+    /* 1. BLACK BACKGROUND */
     .stApp {
         background-color: #000000;
-        background-image: 
-            radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 40px),
-            radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 30px),
-            radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 40px);
-        background-size: 550px 550px, 350px 350px, 250px 250px; 
-        animation: move-stars 200s linear infinite; 
-    }
-    @keyframes move-stars { from {background-position: 0 0, 0 0, 0 0;} to {background-position: -10000px 5000px, -5000px 2500px, -2000px 1000px;} }
-
-    /* CRT SCANLINE EFFECT OVERLAY */
-    .scanlines {
-        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-        background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1));
-        background-size: 100% 4px;
-        pointer-events: none; z-index: 9999;
     }
 
-    /* COOL TITLES */
-    h1, h2, h3, .stButton button {
-        font-family: 'Orbitron', sans-serif !important;
-        text-transform: uppercase;
-        letter-spacing: 3px;
-        text-shadow: 0px 0px 15px #00ff41;
-        color: #fff !important;
+    /* 2. MOVING STARS LAYER */
+    .stars {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        pointer-events: none;
+        background: transparent;
+        animation: fly-stars 100s linear infinite;
+        z-index: 0;
+        opacity: 0.5;
+    }
+    .stars::after {
+        content: " .  .   .    .   . . .   . .   .";
+        color: white;
+        font-size: 20px;
+    }
+    @keyframes fly-stars {
+        from { transform: translateY(0px); }
+        to { transform: translateY(-2000px); }
     }
 
-    /* INPUT BOX GLOW */
-    .stTextInput input, .stChatInput input, textarea { 
-        background-color: rgba(0, 20, 0, 0.8) !important; 
-        color: #00ff41 !important; 
-        border: 1px solid #00ff41 !important;
-        box-shadow: 0px 0px 8px rgba(0, 255, 65, 0.4);
+    /* 3. WIGGLY ROCKS (ASTEROIDS) */
+    .rock { position: fixed; font-size: 40px; animation: float-rock 8s ease-in-out infinite alternate; z-index: 0; opacity: 0.6; }
+    .rock-1 { top: 10%; left: 10%; animation-delay: 0s; }
+    .rock-2 { top: 80%; left: 80%; animation-delay: 2s; }
+    .rock-3 { top: 40%; left: 90%; animation-delay: 1s; }
+    @keyframes float-rock {
+        0% { transform: translate(0, 0) rotate(0deg); }
+        100% { transform: translate(20px, 40px) rotate(20deg); }
+    }
+
+    /* 4. PLANETS */
+    .planet { position: fixed; font-size: 80px; z-index: 0; opacity: 0.8; }
+    .planet-1 { bottom: 10%; left: 5%; animation: rotate-planet 200s linear infinite; }
+    .planet-2 { top: 15%; right: 10%; animation: float-planet 30s ease-in-out infinite alternate; }
+    @keyframes rotate-planet { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes float-planet { from { transform: translateY(0); } to { transform: translateY(-50px); } }
+
+    /* 5. FLYING ROCKET */
+    .rocket {
+        position: fixed;
+        font-size: 60px;
+        z-index: 0;
+        animation: fly-rocket 25s linear infinite;
+        top: 100%; left: -10%;
+    }
+    @keyframes fly-rocket {
+        0% { left: -10%; top: 100%; transform: rotate(45deg); }
+        100% { left: 120%; top: -20%; transform: rotate(45deg); }
     }
     
-    /* BUTTON HOVER EFFECT */
-    .stButton button { 
-        background-color: #000 !important; 
-        border: 2px solid #00ff41 !important;
-        transition: all 0.3s ease;
-    }
-    .stButton button:hover {
-        box-shadow: 0px 0px 20px #00ff41;
-        transform: scale(1.05);
-        color: #fff !important;
-    }
-
-    /* CHAT BUBBLES */
-    .stChatMessage {
-        background-color: rgba(0, 30, 0, 0.9) !important;
-        border-left: 4px solid #00ff41;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        margin-bottom: 10px;
-    }
-
-    /* MISSION INTEL BOX */
-    div[data-testid="stExpander"] {
-        background-color: rgba(0, 10, 0, 0.9) !important;
-        border: 1px dashed #00ff41;
-    }
-    
-    /* BOUNCING DVD LOGO ANIMATION */
+    /* 6. BOUNCING DVD LOGO */
     .dvd-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 0; }
     .dvd-bouncer { position: absolute; width: 150px; opacity: 0.3; animation: bounceX 8s linear infinite alternate, bounceY 13s linear infinite alternate; }
     @keyframes bounceX { from { left: 0; } to { left: calc(100vw - 150px); } }
     @keyframes bounceY { from { top: 0; } to { top: calc(100vh - 150px); } }
+
+    /* INPUT BOX - SOLID BLACK */
+    .stTextInput input, .stChatInput input, textarea { 
+        background-color: #000 !important; 
+        color: #00ff41 !important; 
+        border: 1px solid #00ff41 !important;
+        z-index: 1;
+    }
     
-    /* HIDE DEFAULT STREAMLIT UI */
+    /* BUTTONS */
+    .stButton button { 
+        background-color: #000 !important; 
+        color: #00ff41 !important; 
+        border: 1px solid #00ff41 !important;
+        font-family: 'Orbitron', sans-serif !important;
+    }
+    
+    /* HEADERS */
+    h1, h2, h3 {
+        font-family: 'Orbitron', sans-serif !important;
+        text-shadow: 0 0 10px #00ff41;
+        z-index: 1;
+        position: relative;
+    }
+
+    /* HIDE STREAMLIT UI */
     section[data-testid="stSidebar"] > div { display: none; }
     footer, #MainMenu {visibility: hidden;}
-    [data-testid="stImage"] { display: block; margin-left: auto; margin-right: auto; }
+    [data-testid="stImage"] { display: block; margin-left: auto; margin-right: auto; z-index: 1; position: relative; }
 </style>
-<div class="scanlines"></div>
+
+<div class="stars">. . . . . . . .</div>
+<div class="rock rock-1">🪨</div>
+<div class="rock rock-2">🪨</div>
+<div class="rock rock-3">🌑</div>
+<div class="planet planet-1">🪐</div>
+<div class="planet planet-2">🌍</div>
+<div class="rocket">🚀</div>
 """, unsafe_allow_html=True)
 
 # INJECT LOGO
-LOGO_FILENAME = "logo.png"
 img_base64 = get_img_as_base64(LOGO_FILENAME)
 if img_base64:
     st.markdown(f"""<div class="dvd-container"><div class="dvd-bouncer"><img src="data:image/png;base64,{img_base64}" style="width: 100%;"></div></div>""", unsafe_allow_html=True)
 
 # =========================================================
-# 3. LOGIC & LEVELS
+# 4. LOGIC & LEVELS
 # =========================================================
 if "user_name" not in st.session_state: st.session_state.user_name = ""
 if "level" not in st.session_state: st.session_state.level = 1
+if "start_time" not in st.session_state: st.session_state.start_time = None
 if "messages" not in st.session_state: st.session_state.messages = []
 if "level_complete" not in st.session_state: st.session_state.level_complete = False
 
@@ -179,7 +246,7 @@ def get_level_config(level):
 current_config = get_level_config(st.session_state.level)
 
 # =========================================================
-# 4. GAME INTERFACE
+# 5. GAME INTERFACE
 # =========================================================
 
 # --- SCREEN 1: LOGIN ---
@@ -191,10 +258,15 @@ if st.session_state.user_name == "":
         st.title("SENTINEL-X")
         st.markdown("### ENTER CANDIDATE ID")
         name_input = st.text_input("Name", placeholder="TYPE NAME...")
-        
+        if name_input == "SHOW-ME-THE-LOGS":
+            if os.path.exists(LOG_FILE): st.dataframe(pd.read_csv(LOG_FILE))
+            st.stop()
+            
         if st.button("INITIATE SEQUENCE", type="primary", use_container_width=True):
             if name_input.strip() != "":
                 st.session_state.user_name = name_input
+                st.session_state.start_time = time.time()
+                log_participant(name_input)
                 st.rerun()
 
 # --- SCREEN 2: MAIN GAME ---
@@ -218,27 +290,51 @@ else:
             with st.chat_message(msg["role"], avatar=icon):
                 st.markdown(msg["content"])
 
+    # --- AGGRESSIVE AUTO-SCROLL ---
+    scroll_script = """
+    <script>
+        function forceScroll() {
+            const main = window.parent.document.querySelector(".main");
+            if (main) { main.scrollTop = main.scrollHeight; }
+            const input = window.parent.document.querySelector("textarea[data-testid='stChatInputTextArea']");
+            if (input) { input.focus(); }
+        }
+        forceScroll();
+        setTimeout(forceScroll, 100);
+        setTimeout(forceScroll, 500);
+    </script>
+    """
+    components.html(scroll_script, height=0)
+
     # Level Complete Screen
     if st.session_state.level_complete:
         col1_e, col2_e, col3_e = st.columns([1, 2, 1])
         with col2_e:
+            play_win_sound()
             if st.session_state.level < 3:
                 st.success(f"✅ HACK SUCCESSFUL. FLAG: {current_config['flag']}")
-                if st.button("NEXT LEVEL ➡️", type="primary"):
+                if st.button("NEXT LEVEL ➡️", type="primary", use_container_width=True):
                     st.session_state.level += 1
                     st.session_state.level_complete = False
                     st.session_state.messages = []
                     st.rerun()
             else:
+                final_seconds = int(time.time() - st.session_state.start_time)
+                update_winner(st.session_state.user_name, final_seconds)
                 st.balloons()
-                st.markdown("# 🏆 SYSTEM COMPROMISED")
-                st.markdown("### YOU ARE ELITE.")
-                if st.button("REBOOT SYSTEM"):
+                st.markdown(f"# 🏆 SYSTEM COMPROMISED\n### TIME: {final_seconds}s")
+                leaderboard = get_leaderboard()
+                if not leaderboard.empty: st.table(leaderboard)
+                if st.button("REBOOT SYSTEM", use_container_width=True):
                     st.session_state.clear()
                     st.rerun()
     
     # Chat Input
     elif prompt := st.chat_input("ENTER COMMAND..."):
+        if prompt == "SHOW-ME-THE-LOGS":
+             if os.path.exists(LOG_FILE): st.dataframe(pd.read_csv(LOG_FILE))
+             st.stop()
+
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user", avatar="👤"):
             st.markdown(prompt)
@@ -248,7 +344,7 @@ else:
         clients = get_groq_client()
         
         if not clients:
-            response_text = "⚠️ ERROR: SYSTEM KEYS MISSING. PLEASE CONFIGURE SECRETS."
+            response_text = "⚠️ ERROR: SYSTEM KEYS MISSING. PLEASE CONFIGURE SECRETS IN STREAMLIT SETTINGS."
         else:
             try:
                 client = random.choice(clients)
