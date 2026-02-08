@@ -90,11 +90,11 @@ def get_leaderboard():
     return winners[["Name", "Time"]].head(10)
 
 # =========================================================
-# 3. VISUAL ENHANCEMENTS (DEEP SPACE UI)
+# 3. VISUAL ENHANCEMENTS (WARP SPEED STARS)
 # =========================================================
 st.markdown("""
 <style>
-    /* IMPORT FUTURISTIC FONT */
+    /* IMPORT FONTS */
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Source+Code+Pro:wght@400;700&display=swap');
     
     /* RESET */
@@ -103,19 +103,30 @@ st.markdown("""
         color: #00ff41 !important;
     }
 
-    /* 1. MAIN APP BACKGROUND */
-    .stApp { background-color: transparent !important; }
-    body { background-color: #000000; overflow-x: hidden; }
+    /* 1. MAIN BACKGROUND - BLACK */
+    .stApp { background-color: #000000 !important; }
 
-    /* 2. MOVING STARS LAYER */
-    .stars {
-        position: fixed; top: 0; left: 0; width: 100%; height: 200%;
-        pointer-events: none; color: white;
-        font-size: 20px; line-height: 100px; opacity: 0.5;
-        animation: fly-stars 50s linear infinite; z-index: -1;
+    /* 2. HYPERSPACE STARFIELD */
+    /* Creates stars using radial gradients that move outward */
+    .stApp::before {
+        content: "";
+        position: fixed;
+        top: 0; left: 0; width: 100vw; height: 100vh;
+        background: 
+            radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 40px),
+            radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 30px),
+            radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 40px);
+        background-size: 550px 550px, 350px 350px, 250px 250px; 
+        animation: star-fly 120s linear infinite; /* Move stars diagonally */
+        z-index: 0;
+        opacity: 0.6;
     }
-    @keyframes fly-stars { from { transform: translateY(0); } to { transform: translateY(-50%); } }
 
+    @keyframes star-fly {
+        from { background-position: 0 0, 0 0, 0 0; }
+        to { background-position: 1000px 1000px, 500px 500px, 200px 200px; }
+    }
+    
     /* 3. WIGGLY ROCKS */
     .rock { position: fixed; font-size: 40px; animation: float-rock 6s ease-in-out infinite alternate; z-index: 0; opacity: 0.8; }
     .rock-1 { top: 10%; left: 10%; }
@@ -139,7 +150,7 @@ st.markdown("""
         font-size: 60px;
         z-index: 0;
         animation: fly-rocket 12s linear infinite;
-        bottom: 20%; /* Positioned near bottom */
+        bottom: 20%;
         left: -10%;
     }
     @keyframes fly-rocket {
@@ -168,20 +179,6 @@ st.markdown("""
     [data-testid="stImage"] { display: block; margin-left: auto; margin-right: auto; z-index: 1; position: relative; }
 </style>
 
-<div class="stars">
-    .   .    .     .      .       .     .   .   .   .   .  .   .  .
-    .      .       .       .      .     .   .   .   .   .  .   .  .
-    .   .    .     .      .       .     .   .   .   .   .  .   .  .
-    .      .       .       .      .     .   .   .   .   .  .   .  .
-    .   .    .     .      .       .     .   .   .   .   .  .   .  .
-    .      .       .       .      .     .   .   .   .   .  .   .  .
-    .   .    .     .      .       .     .   .   .   .   .  .   .  .
-    .      .       .       .      .     .   .   .   .   .  .   .  .
-    .   .    .     .      .       .     .   .   .   .   .  .   .  .
-    .      .       .       .      .     .   .   .   .   .  .   .  .
-    .   .    .     .      .       .     .   .   .   .   .  .   .  .
-    .      .       .       .      .     .   .   .   .   .  .   .  .
-</div>
 <div class="rock rock-1">🪨</div>
 <div class="rock rock-2">🪨</div>
 <div class="rock rock-3">🌑</div>
