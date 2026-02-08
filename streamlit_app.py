@@ -90,7 +90,7 @@ def get_leaderboard():
     return winners[["Name", "Time"]].head(10)
 
 # =========================================================
-# 3. VISUAL ENHANCEMENTS (WARP SPEED STARS)
+# 3. VISUAL ENHANCEMENTS (WARP SPEED SPACE UI)
 # =========================================================
 st.markdown("""
 <style>
@@ -106,8 +106,7 @@ st.markdown("""
     /* 1. MAIN BACKGROUND - BLACK */
     .stApp { background-color: #000000 !important; }
 
-    /* 2. HYPERSPACE STARFIELD */
-    /* Creates stars using radial gradients that move outward */
+    /* 2. HYPERSPACE STARFIELD ANIMATION */
     .stApp::before {
         content: "";
         position: fixed;
@@ -117,7 +116,7 @@ st.markdown("""
             radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 30px),
             radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 40px);
         background-size: 550px 550px, 350px 350px, 250px 250px; 
-        animation: star-fly 120s linear infinite; /* Move stars diagonally */
+        animation: star-fly 60s linear infinite; 
         z-index: 0;
         opacity: 0.6;
     }
@@ -266,9 +265,21 @@ else:
             with st.chat_message(msg["role"], avatar=icon):
                 st.markdown(msg["content"])
 
-    # AGGRESSIVE AUTO-SCROLL
+    # AGGRESSIVE AUTO-SCROLL & ENTER-KEY FIX
     scroll_script = """
     <script>
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const textAreas = document.querySelectorAll('textarea');
+            textAreas.forEach(textArea => {
+                textArea.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.form.dispatchEvent(new Event('submit', { cancelable: true }));
+                    }
+                });
+            });
+        });
+
         function forceScroll() {
             const main = window.parent.document.querySelector(".main");
             if (main) { main.scrollTop = main.scrollHeight; }
