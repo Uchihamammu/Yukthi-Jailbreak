@@ -66,7 +66,8 @@ def log_participant(name):
     init_log_file()
     df = pd.read_csv(LOG_FILE)
     if name not in df["Name"].values:
-        new_entry = pd.DataFrame([{"Name": name, "Status": "Started", "Time_Seconds": 9999, "Timestamp": time.strftime("%H:%M:%S")}])
+        # Log them as "Started" immediately
+        new_entry = pd.DataFrame([{"Name": name, "Status": "Started", "Time_Seconds": 0, "Timestamp": time.strftime("%H:%M:%S")}])
         df = pd.concat([df, new_entry], ignore_index=True)
         df.to_csv(LOG_FILE, index=False)
 
@@ -75,6 +76,7 @@ def update_winner(name, elapsed_seconds):
     df = pd.read_csv(LOG_FILE)
     if name in df["Name"].values:
         idx = df[df["Name"] == name].last_valid_index()
+        # Update status to Complete
         if df.at[idx, "Status"] != "MISSION COMPLETE":
             df.at[idx, "Status"] = "MISSION COMPLETE"
             df.at[idx, "Time_Seconds"] = elapsed_seconds
@@ -94,19 +96,16 @@ def get_leaderboard():
 # =========================================================
 st.markdown("""
 <style>
-    /* IMPORT FONTS */
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Source+Code+Pro:wght@400;700&display=swap');
     
-    /* RESET */
     html, body, [class*="css"], .stMarkdown, .stTextInput, .stChatInput, p, div {
         font-family: 'Source Code Pro', monospace !important;
         color: #00ff41 !important;
     }
 
-    /* 1. MAIN BACKGROUND - BLACK */
     .stApp { background-color: #000000 !important; }
 
-    /* 2. HYPERSPACE STARFIELD ANIMATION */
+    /* STARFIELD ANIMATION */
     .stApp::before {
         content: "";
         position: fixed;
@@ -120,13 +119,12 @@ st.markdown("""
         z-index: 0;
         opacity: 0.6;
     }
-
     @keyframes star-fly {
         from { background-position: 0 0, 0 0, 0 0; }
         to { background-position: 1000px 1000px, 500px 500px, 200px 200px; }
     }
     
-    /* 3. WIGGLY ROCKS */
+    /* SPACE OBJECTS */
     .rock { position: fixed; font-size: 40px; animation: float-rock 6s ease-in-out infinite alternate; z-index: 0; opacity: 0.8; }
     .rock-1 { top: 10%; left: 10%; }
     .rock-2 { top: 80%; left: 80%; animation-delay: 2s; }
@@ -136,28 +134,23 @@ st.markdown("""
         100% { transform: translate(20px, 40px) rotate(20deg); }
     }
 
-    /* 4. PLANETS */
     .planet { position: fixed; font-size: 80px; z-index: 0; opacity: 0.9; }
     .planet-1 { bottom: 10%; left: 5%; animation: rotate-planet 100s linear infinite; }
     .planet-2 { top: 15%; right: 10%; animation: float-planet 10s ease-in-out infinite alternate; }
     @keyframes rotate-planet { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     @keyframes float-planet { from { transform: translateY(0); } to { transform: translateY(-30px); } }
 
-    /* 5. FLYING ROCKET (HORIZONTAL) */
     .rocket {
-        position: fixed;
-        font-size: 60px;
-        z-index: 0;
+        position: fixed; font-size: 60px; z-index: 0;
         animation: fly-rocket 12s linear infinite;
-        bottom: 20%;
-        left: -10%;
+        bottom: 20%; left: -10%;
     }
     @keyframes fly-rocket {
         0% { left: -10%; transform: rotate(45deg); }
         100% { left: 110%; transform: rotate(45deg); }
     }
     
-    /* 6. BOUNCING DVD LOGO */
+    /* BOUNCING DVD LOGO */
     .dvd-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 0; }
     .dvd-bouncer { position: absolute; width: 150px; opacity: 0.3; animation: bounceX 8s linear infinite alternate, bounceY 13s linear infinite alternate; }
     @keyframes bounceX { from { left: 0; } to { left: calc(100vw - 150px); } }
@@ -237,15 +230,25 @@ if st.session_state.user_name == "":
         st.title("SENTINEL-X")
         st.markdown("### ENTER CANDIDATE ID")
         name_input = st.text_input("Name", placeholder="TYPE NAME...")
+        
+        # --- ADMIN PANEL ---
         if name_input == "SHOW-ME-THE-LOGS":
-            if os.path.exists(LOG_FILE): st.dataframe(pd.read_csv(LOG_FILE))
+            st.markdown("## 🕵️ ADMIN PANEL")
+            if os.path.exists(LOG_FILE): 
+                df = pd.read_csv(LOG_FILE)
+                st.dataframe(df)
+                # Download Button
+                csv = df.to_csv(index=False).encode('utf-8')
+                st.download_button("⬇️ DOWNLOAD LOGS", csv, "mission_logs.csv", "text/csv")
+            else:
+                st.warning("No logs found yet.")
             st.stop()
             
         if st.button("INITIATE SEQUENCE", type="primary", use_container_width=True):
             if name_input.strip() != "":
                 st.session_state.user_name = name_input
                 st.session_state.start_time = time.time()
-                log_participant(name_input)
+                log_participant(name_input) # <--- RECORDS EVERYONE HERE
                 st.rerun()
 else:
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -317,7 +320,7 @@ else:
     
     elif prompt := st.chat_input("ENTER COMMAND..."):
         if prompt == "SHOW-ME-THE-LOGS":
-             if os.path.exists(LOG_FILE): st.dataframe(pd.read_csv(LOG_FILE))
+             st.warning("Please reboot system to access Admin Panel.")
              st.stop()
 
         st.session_state.messages.append({"role": "user", "content": prompt})
@@ -328,7 +331,7 @@ else:
         clients = get_groq_client()
         
         if not clients:
-            response_text = "⚠️ ERROR: SYSTEM KEYS MISSING. PLEASE CONFIGURE SECRETS IN STREAMLIT SETTINGS."
+            response_text = "⚠️ ERROR: SYSTEM KEYS MISSING. PLEASE CONFIGURE SECRETS."
         else:
             try:
                 client = random.choice(clients)
