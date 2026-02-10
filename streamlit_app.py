@@ -98,15 +98,25 @@ def save_progress(name, new_level):
         df.at[idx, "Level"] = new_level
         df.to_csv(LOG_FILE, index=False)
 
+def reset_player(name):
+    """Resets a player back to Level 1 in the DB"""
+    init_log_file()
+    df = pd.read_csv(LOG_FILE)
+    if name in df["Name"].values:
+        idx = df[df["Name"] == name].index[0]
+        df.at[idx, "Level"] = 1
+        df.at[idx, "Status"] = "Replaying"
+        df.to_csv(LOG_FILE, index=False)
+
 def update_winner(name, elapsed_seconds):
     init_log_file()
     df = pd.read_csv(LOG_FILE)
     if name in df["Name"].values:
         idx = df[df["Name"] == name].index[0]
-        if df.at[idx, "Status"] != "MISSION COMPLETE":
-            df.at[idx, "Status"] = "MISSION COMPLETE"
-            df.at[idx, "Time_Seconds"] = elapsed_seconds
-            df.to_csv(LOG_FILE, index=False)
+        # Always update time if they finish, even if replaying
+        df.at[idx, "Status"] = "MISSION COMPLETE"
+        df.at[idx, "Time_Seconds"] = elapsed_seconds
+        df.to_csv(LOG_FILE, index=False)
 
 def get_leaderboard():
     if not os.path.exists(LOG_FILE): return pd.DataFrame()
@@ -118,7 +128,7 @@ def get_leaderboard():
     return winners[["Name", "Time"]].head(10)
 
 # =========================================================
-# 3. VISUAL ENHANCEMENTS (ROBOTIC THEME)
+# 3. VISUAL ENHANCEMENTS
 # =========================================================
 st.markdown("""
 <style>
@@ -138,7 +148,7 @@ st.markdown("""
     footer {visibility: hidden;}
     .stApp > header {display: none;}
 
-    /* --- NEW TAB DESIGN (GLOWING BORDER) --- */
+    /* CUSTOM TABS */
     .stTabs [data-baseweb="tab-list"] {
         gap: 15px;
         background-color: transparent;
@@ -147,7 +157,7 @@ st.markdown("""
     .stTabs [data-baseweb="tab"] {
         background-color: transparent;
         border: 1px solid #333;
-        color: #666; /* Dimmed text for unselected */
+        color: #666;
         border-radius: 5px;
         padding: 10px 20px;
         transition: all 0.3s ease;
@@ -156,7 +166,7 @@ st.markdown("""
         background-color: rgba(0, 255, 65, 0.1) !important;
         border: 2px solid #00ff41 !important;
         color: #00ff41 !important;
-        box-shadow: 0 0 10px rgba(0, 255, 65, 0.4); /* NEON GLOW */
+        box-shadow: 0 0 10px rgba(0, 255, 65, 0.4);
         font-weight: bold;
     }
 
@@ -356,7 +366,7 @@ else:
             st.info(f"📂 INTEL: {current_config['clue']}")
 
     # ==========================================
-    # LEVEL 2: 5-DIGIT CODE BREAKER (IMPROVED)
+    # LEVEL 2: 5-DIGIT CODE BREAKER
     # ==========================================
     if st.session_state.level == 2:
         st.markdown("""
@@ -421,7 +431,7 @@ else:
     # LEVEL 1 & 3: CHATBOT
     # ==========================================
     else:
-        # LEVEL 1 SECRET (HIDDEN INSIDE GAME)
+        # LEVEL 1 SECRET
         if st.session_state.level == 1:
             st.markdown("", unsafe_allow_html=True)
             with st.expander("🔻 SYSTEM_DIAGNOSTICS (TOUCH TO EXPAND)", expanded=False):
@@ -441,7 +451,7 @@ else:
                 with st.chat_message(msg["role"], avatar=icon):
                     st.markdown(msg["content"])
 
-        # MOBILE SCROLL & WAKE LOCK
+        # SCROLL & WAKE LOCK
         scroll_script = """
         <script>
             document.addEventListener('DOMContentLoaded', (event) => {
@@ -544,6 +554,8 @@ else:
                 st.markdown(f"# 🏆 SYSTEM COMPROMISED\n### TIME: {final_seconds}s")
                 leaderboard = get_leaderboard()
                 if not leaderboard.empty: st.table(leaderboard)
+                # --- REBOOT SYSTEM (WIPE SAVE) ---
                 if st.button("REBOOT SYSTEM", use_container_width=True):
+                    reset_player(st.session_state.user_name) # Force reset to Level 1
                     st.session_state.clear()
                     st.rerun()
