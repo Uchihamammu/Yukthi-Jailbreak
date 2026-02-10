@@ -115,19 +115,23 @@ def get_leaderboard():
     return winners[["Name", "Time"]].head(10)
 
 # =========================================================
-# 3. VISUAL ENHANCEMENTS
+# 3. VISUAL ENHANCEMENTS (NEW ROBOTIC FONT)
 # =========================================================
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Source+Code+Pro:wght@400;700&display=swap');
+    /* IMPORTING 'SHARE TECH MONO' FOR THAT ROBOTIC LOOK */
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
     
-    html, body, [class*="css"], .stMarkdown, .stTextInput, .stChatInput, p, div {
-        font-family: 'Source Code Pro', monospace !important;
+    /* APPLYING FONT GLOBALLY */
+    html, body, [class*="css"], .stMarkdown, .stTextInput, .stChatInput, .stChatMessage, p, div, input, textarea {
+        font-family: 'Share Tech Mono', monospace !important;
         color: #00ff41 !important;
+        letter-spacing: 1px;
     }
 
     .stApp { background-color: #000000 !important; }
 
+    /* STARFIELD ANIMATION */
     .stApp::before {
         content: ""; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
         background: 
@@ -138,6 +142,7 @@ st.markdown("""
     }
     @keyframes star-fly { from { background-position: 0 0; } to { background-position: 1000px 1000px; } }
     
+    /* FLOATING OBJECTS */
     .rock { position: fixed; font-size: 40px; animation: float-rock 6s ease-in-out infinite alternate; z-index: 0; opacity: 0.8; }
     .rock-1 { top: 10%; left: 10%; }
     .rock-2 { top: 80%; left: 80%; animation-delay: 2s; }
@@ -153,16 +158,19 @@ st.markdown("""
     .rocket { position: fixed; font-size: 60px; z-index: 0; animation: fly-rocket 12s linear infinite; bottom: 20%; left: -10%; }
     @keyframes fly-rocket { 0% { left: -10%; transform: rotate(45deg); } 100% { left: 110%; transform: rotate(45deg); } }
     
+    /* GAME UI */
     .game-box { border: 2px solid #00ff41; padding: 20px; background-color: rgba(0, 20, 0, 0.9); border-radius: 10px; text-align: center; margin-bottom: 20px; }
-    .guess-row { font-size: 24px; letter-spacing: 5px; margin: 5px; font-family: 'Source Code Pro', monospace; }
+    .guess-row { font-size: 24px; letter-spacing: 5px; margin: 5px; font-family: 'Share Tech Mono', monospace; }
 
+    /* BOUNCING LOGO */
     .dvd-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 0; }
     .dvd-bouncer { position: absolute; width: 150px; opacity: 0.3; animation: bounceX 8s linear infinite alternate, bounceY 13s linear infinite alternate; }
     @keyframes bounceX { from { left: 0; } to { left: calc(100vw - 150px); } }
     @keyframes bounceY { from { top: 0; } to { top: calc(100vh - 150px); } }
 
-    .stTextInput input, .stChatInput input, textarea { background-color: #000 !important; color: #00ff41 !important; border: 1px solid #00ff41 !important; z-index: 1; }
-    .stButton button { background-color: #000 !important; color: #00ff41 !important; border: 1px solid #00ff41 !important; font-family: 'Orbitron', sans-serif !important; }
+    /* INPUTS & BUTTONS */
+    .stTextInput input, .stChatInput input, textarea { background-color: #000 !important; color: #00ff41 !important; border: 1px solid #00ff41 !important; z-index: 1; font-family: 'Share Tech Mono', monospace !important; }
+    .stButton button { background-color: #000 !important; color: #00ff41 !important; border: 1px solid #00ff41 !important; font-family: 'Orbitron', sans-serif !important; letter-spacing: 2px; }
     h1, h2, h3 { font-family: 'Orbitron', sans-serif !important; text-shadow: 0 0 10px #00ff41; z-index: 1; position: relative; }
     section[data-testid="stSidebar"] > div { display: none; }
     footer, #MainMenu {visibility: hidden;}
@@ -177,6 +185,7 @@ st.markdown("""
 <div class="rocket">🚀</div>
 """, unsafe_allow_html=True)
 
+# INJECT LOGO
 img_base64 = get_img_as_base64(LOGO_FILENAME)
 if img_base64:
     st.markdown(f"""<div class="dvd-container"><div class="dvd-bouncer"><img src="data:image/png;base64,{img_base64}" style="width: 100%;"></div></div>""", unsafe_allow_html=True)
@@ -241,6 +250,7 @@ if st.session_state.user_name == "":
         st.title("SENTINEL-X")
         st.markdown("### 📝 SPOT REGISTRATION")
         
+        # --- REGISTRATION FORM ---
         with st.form("registration_form"):
             name_input = st.text_input("FULL NAME", placeholder="Enter your name...")
             email_input = st.text_input("EMAIL", placeholder="Enter your email...")
@@ -250,14 +260,20 @@ if st.session_state.user_name == "":
             submitted = st.form_submit_button("🚀 REGISTER & START MISSION", type="primary")
             
             if submitted:
+                # ADMIN CHECK
                 if name_input == "SHOW-ME-THE-LOGS":
                     st.session_state.is_admin = True
                     st.rerun() 
+                
+                # VALIDATION
                 elif name_input.strip() and email_input.strip() and phone_input.strip() and college_input.strip():
                     st.session_state.user_name = name_input
                     st.session_state.start_time = time.time()
+                    
+                    # Register User in DB
                     register_participant(name_input, email_input, phone_input, college_input)
                     
+                    # Check for Save Game
                     saved_level = get_player_progress(name_input)
                     st.session_state.level = saved_level
                     
@@ -268,6 +284,7 @@ if st.session_state.user_name == "":
                 else:
                     st.error("⚠️ PLEASE FILL ALL FIELDS!")
 
+        # --- ADMIN PANEL ---
         if st.session_state.get("is_admin", False):
              st.markdown("## 🕵️ ADMIN PANEL")
              if os.path.exists(LOG_FILE): 
@@ -402,8 +419,7 @@ else:
             with st.chat_message("user", avatar="👤"):
                 st.markdown(prompt)
 
-            # --- WIN CONDITION CHECK (FIXED) ---
-            # We check if the USER typed the correct flag (Case Insensitive)
+            # --- WIN CONDITION CHECK ---
             if current_config["flag"].lower() in prompt.lower():
                 st.session_state.level_complete = True
                 st.rerun()
@@ -412,7 +428,6 @@ else:
                 st.session_state.level_complete = True
                 st.rerun()
             
-            # If not a win, get LLM Response
             else:
                 response_text = ""
                 clients = get_groq_client()
