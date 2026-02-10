@@ -65,14 +65,21 @@ def init_log_file():
 def get_player_progress(name):
     init_log_file()
     df = pd.read_csv(LOG_FILE)
-    if name in df["Name"].values:
-        user_row = df[df["Name"] == name].iloc[0]
-        return int(user_row["Level"]) 
-    return 1 
+    # Check case-insensitive match
+    name_lower = name.strip().lower()
+    # Create a lower case series for comparison
+    names_series = df["Name"].astype(str).str.strip().str.lower()
+    
+    if name_lower in names_series.values:
+        # Get the actual row using the index of the match
+        idx = names_series[names_series == name_lower].index[0]
+        return int(df.at[idx, "Level"])
+    return 0 # Return 0 if not found
 
 def register_participant(name, email, phone, college):
     init_log_file()
     df = pd.read_csv(LOG_FILE)
+    # Check if already exists to avoid duplicates
     if name not in df["Name"].values:
         new_entry = pd.DataFrame([{
             "Name": name, 
@@ -115,7 +122,7 @@ def get_leaderboard():
     return winners[["Name", "Time"]].head(10)
 
 # =========================================================
-# 3. VISUAL ENHANCEMENTS
+# 3. VISUAL ENHANCEMENTS (ROBOTIC THEME)
 # =========================================================
 st.markdown("""
 <style>
@@ -135,6 +142,24 @@ st.markdown("""
     footer {visibility: hidden;}
     .stApp > header {display: none;}
 
+    /* CUSTOM TABS */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 10px;
+        background-color: transparent;
+    }
+    .stTabs [data-baseweb="tab"] {
+        background-color: rgba(0, 255, 65, 0.1);
+        border: 1px solid #00ff41;
+        color: #00ff41;
+        border-radius: 5px;
+        padding: 10px 20px;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #00ff41 !important;
+        color: black !important;
+        font-weight: bold;
+    }
+
     /* ANIMATIONS */
     .stApp::before {
         content: ""; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
@@ -146,7 +171,6 @@ st.markdown("""
     }
     @keyframes star-fly { from { background-position: 0 0; } to { background-position: 1000px 1000px; } }
     
-    /* FLOATING OBJECTS */
     .rock { position: fixed; font-size: 40px; animation: float-rock 6s ease-in-out infinite alternate; z-index: 0; opacity: 0.8; }
     .rock-1 { top: 10%; left: 10%; }
     .rock-2 { top: 80%; left: 80%; animation-delay: 2s; }
@@ -250,35 +274,61 @@ if st.session_state.user_name == "":
         st.markdown("<br><br>", unsafe_allow_html=True)
         if os.path.exists(LOGO_FILENAME): st.image(LOGO_FILENAME, width=150)
         st.title("SENTINEL-X")
-        st.markdown("### 📝 SPOT REGISTRATION")
         
-        with st.form("registration_form"):
-            name_input = st.text_input("FULL NAME", placeholder="Enter your name...")
-            email_input = st.text_input("EMAIL", placeholder="Enter your email...")
-            phone_input = st.text_input("PHONE NUMBER", placeholder="Enter phone number...")
-            college_input = st.text_input("COLLEGE / SCHOOL NAME", placeholder="Type 'Not Studying' if applicable...")
-            
-            submitted = st.form_submit_button("🚀 REGISTER & START MISSION", type="primary")
-            
-            if submitted:
-                if name_input == "SHOW-ME-THE-LOGS":
-                    st.session_state.is_admin = True
-                    st.rerun() 
-                elif name_input.strip() and email_input.strip() and phone_input.strip() and college_input.strip():
-                    st.session_state.user_name = name_input
-                    st.session_state.start_time = time.time()
-                    register_participant(name_input, email_input, phone_input, college_input)
-                    
-                    saved_level = get_player_progress(name_input)
-                    st.session_state.level = saved_level
-                    
-                    if saved_level > 1:
-                        st.toast(f"WELCOME BACK {name_input}. RESUMING LEVEL {saved_level}...")
-                        time.sleep(1)
-                    st.rerun()
-                else:
-                    st.error("⚠️ PLEASE FILL ALL FIELDS!")
+        # --- LOGIN TABS ---
+        tab_new, tab_resume = st.tabs(["🆕 NEW RECRUIT", "🔄 RESUME MISSION"])
+        
+        # --- TAB 1: NEW REGISTRATION (Full Form) ---
+        with tab_new:
+            st.markdown("### 📝 SPOT REGISTRATION")
+            with st.form("registration_form"):
+                name_input = st.text_input("FULL NAME", placeholder="Enter your name...")
+                email_input = st.text_input("EMAIL", placeholder="Enter your email...")
+                phone_input = st.text_input("PHONE NUMBER", placeholder="Enter phone number...")
+                college_input = st.text_input("COLLEGE / SCHOOL NAME", placeholder="Type 'Not Studying' if applicable...")
+                
+                submitted = st.form_submit_button("🚀 REGISTER & START", type="primary")
+                
+                if submitted:
+                    if name_input == "SHOW-ME-THE-LOGS":
+                        st.session_state.is_admin = True
+                        st.rerun() 
+                    elif name_input.strip() and email_input.strip() and phone_input.strip() and college_input.strip():
+                        st.session_state.user_name = name_input
+                        st.session_state.start_time = time.time()
+                        
+                        register_participant(name_input, email_input, phone_input, college_input)
+                        
+                        saved_level = get_player_progress(name_input)
+                        if saved_level == 0: saved_level = 1
+                        st.session_state.level = saved_level
+                        st.rerun()
+                    else:
+                        st.error("⚠️ PLEASE FILL ALL FIELDS!")
+        
+        # --- TAB 2: RESUME MISSION (Simple Login) ---
+        with tab_resume:
+            st.markdown("### 🔄 AGENT LOGIN")
+            with st.form("resume_form"):
+                resume_name = st.text_input("ENTER CODENAME (FULL NAME)", placeholder="Type the name you registered with...")
+                resume_btn = st.form_submit_button("⚡ RESUME MISSION", type="primary")
+                
+                if resume_btn:
+                    if resume_name.strip():
+                        saved_level = get_player_progress(resume_name)
+                        if saved_level > 0:
+                            st.session_state.user_name = resume_name
+                            st.session_state.level = saved_level
+                            st.session_state.start_time = time.time()
+                            st.toast(f"WELCOME BACK {resume_name}. RESTORING LEVEL {saved_level}...")
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error("⚠️ AGENT NOT FOUND. PLEASE REGISTER IN THE 'NEW RECRUIT' TAB.")
+                    else:
+                        st.warning("⚠️ ENTER NAME.")
 
+        # --- ADMIN PANEL ---
         if st.session_state.get("is_admin", False):
              st.markdown("## 🕵️ ADMIN PANEL")
              if os.path.exists(LOG_FILE): 
@@ -297,6 +347,7 @@ if st.session_state.user_name == "":
              else:
                 st.warning("No logs found.")
 else:
+    # --- GAME START ---
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         if os.path.exists(LOGO_FILENAME): st.image(LOGO_FILENAME, width=80)
@@ -309,7 +360,6 @@ else:
     # LEVEL 2: 5-DIGIT CODE BREAKER (IMPROVED)
     # ==========================================
     if st.session_state.level == 2:
-        # --- NEW LEGEND & BOX ---
         st.markdown("""
         <div class="game-box">
             <h3>🔒 SECURITY ACCESS PANEL</h3>
@@ -357,7 +407,6 @@ else:
         if st.session_state.guesses:
             st.markdown("### 📜 DATA STREAM")
             for g in reversed(st.session_state.guesses):
-                # Clean Layout for History
                 parts = g.split("|")
                 code = parts[0].strip()
                 result = parts[1].strip()
