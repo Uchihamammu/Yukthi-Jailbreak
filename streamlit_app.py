@@ -115,15 +115,13 @@ def get_leaderboard():
     return winners[["Name", "Time"]].head(10)
 
 # =========================================================
-# 3. VISUAL ENHANCEMENTS (NEW ROBOTIC FONT)
+# 3. VISUAL ENHANCEMENTS
 # =========================================================
 st.markdown("""
 <style>
-    /* IMPORTING 'SHARE TECH MONO' FOR THAT ROBOTIC LOOK */
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
     
-    /* APPLYING FONT GLOBALLY */
-    html, body, [class*="css"], .stMarkdown, .stTextInput, .stChatInput, .stChatMessage, p, div, input, textarea {
+    html, body, [class*="css"], .stMarkdown, .stTextInput, .stChatInput, p, div, input, textarea {
         font-family: 'Share Tech Mono', monospace !important;
         color: #00ff41 !important;
         letter-spacing: 1px;
@@ -131,7 +129,13 @@ st.markdown("""
 
     .stApp { background-color: #000000 !important; }
 
-    /* STARFIELD ANIMATION */
+    /* HIDE DEFAULT STREAMLIT UI */
+    #MainMenu {visibility: hidden;}
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
+    .stApp > header {display: none;}
+
+    /* ANIMATIONS */
     .stApp::before {
         content: ""; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
         background: 
@@ -168,12 +172,10 @@ st.markdown("""
     @keyframes bounceX { from { left: 0; } to { left: calc(100vw - 150px); } }
     @keyframes bounceY { from { top: 0; } to { top: calc(100vh - 150px); } }
 
-    /* INPUTS & BUTTONS */
-    .stTextInput input, .stChatInput input, textarea { background-color: #000 !important; color: #00ff41 !important; border: 1px solid #00ff41 !important; z-index: 1; font-family: 'Share Tech Mono', monospace !important; }
+    .stTextInput input, .stChatInput input, textarea { background-color: #000 !important; color: #00ff41 !important; border: 1px solid #00ff41 !important; z-index: 1; }
     .stButton button { background-color: #000 !important; color: #00ff41 !important; border: 1px solid #00ff41 !important; font-family: 'Orbitron', sans-serif !important; letter-spacing: 2px; }
     h1, h2, h3 { font-family: 'Orbitron', sans-serif !important; text-shadow: 0 0 10px #00ff41; z-index: 1; position: relative; }
     section[data-testid="stSidebar"] > div { display: none; }
-    footer, #MainMenu {visibility: hidden;}
     [data-testid="stImage"] { display: block; margin-left: auto; margin-right: auto; z-index: 1; position: relative; }
 </style>
 
@@ -250,7 +252,6 @@ if st.session_state.user_name == "":
         st.title("SENTINEL-X")
         st.markdown("### 📝 SPOT REGISTRATION")
         
-        # --- REGISTRATION FORM ---
         with st.form("registration_form"):
             name_input = st.text_input("FULL NAME", placeholder="Enter your name...")
             email_input = st.text_input("EMAIL", placeholder="Enter your email...")
@@ -260,20 +261,14 @@ if st.session_state.user_name == "":
             submitted = st.form_submit_button("🚀 REGISTER & START MISSION", type="primary")
             
             if submitted:
-                # ADMIN CHECK
                 if name_input == "SHOW-ME-THE-LOGS":
                     st.session_state.is_admin = True
                     st.rerun() 
-                
-                # VALIDATION
                 elif name_input.strip() and email_input.strip() and phone_input.strip() and college_input.strip():
                     st.session_state.user_name = name_input
                     st.session_state.start_time = time.time()
-                    
-                    # Register User in DB
                     register_participant(name_input, email_input, phone_input, college_input)
                     
-                    # Check for Save Game
                     saved_level = get_player_progress(name_input)
                     st.session_state.level = saved_level
                     
@@ -284,7 +279,6 @@ if st.session_state.user_name == "":
                 else:
                     st.error("⚠️ PLEASE FILL ALL FIELDS!")
 
-        # --- ADMIN PANEL ---
         if st.session_state.get("is_admin", False):
              st.markdown("## 🕵️ ADMIN PANEL")
              if os.path.exists(LOG_FILE): 
@@ -312,11 +306,24 @@ else:
             st.info(f"📂 INTEL: {current_config['clue']}")
 
     # ==========================================
-    # LEVEL 2: 5-DIGIT CODE BREAKER
+    # LEVEL 2: 5-DIGIT CODE BREAKER (IMPROVED)
     # ==========================================
     if st.session_state.level == 2:
-        st.markdown("""<div class="game-box"><h3>🔒 SECURITY ACCESS PANEL</h3><p>GUESS THE 5-DIGIT PIN</p></div>""", unsafe_allow_html=True)
+        # --- NEW LEGEND & BOX ---
+        st.markdown("""
+        <div class="game-box">
+            <h3>🔒 SECURITY ACCESS PANEL</h3>
+            <p>GUESS THE 5-DIGIT PIN</p>
+            <hr style="border-color: #00ff41; opacity: 0.3;">
+            <div style="font-size: 14px; display: flex; justify-content: space-around; padding: 5px;">
+                <span>🟩 = CORRECT</span>
+                <span>🟨 = WRONG SPOT</span>
+                <span>🟥 = INCORRECT</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
         
+        # HINTS
         secret_sum = sum(int(digit) for digit in st.session_state.secret_code)
         first_digit = st.session_state.secret_code[0]
         
@@ -343,13 +350,24 @@ else:
                             if guess[i] == secret[i]: feedback.append("🟩")
                             elif guess[i] in secret: feedback.append("🟨")
                             else: feedback.append("🟥")
+                        
                         st.session_state.guesses.append(f"{guess}  |  {''.join(feedback)}")
                         st.rerun()
         
         if st.session_state.guesses:
-            st.markdown("### 📜 HACK LOG:")
+            st.markdown("### 📜 DATA STREAM")
             for g in reversed(st.session_state.guesses):
-                st.markdown(f"<div class='guess-row'>{g}</div>", unsafe_allow_html=True)
+                # Clean Layout for History
+                parts = g.split("|")
+                code = parts[0].strip()
+                result = parts[1].strip()
+                st.markdown(
+                    f"""<div style="background: rgba(0,255,65,0.1); border-left: 3px solid #00ff41; padding: 10px; margin-bottom: 5px; display: flex; justify-content: space-between; font-size: 20px;">
+                        <span>{code}</span>
+                        <span>{result}</span>
+                    </div>""", 
+                    unsafe_allow_html=True
+                )
 
     # ==========================================
     # LEVEL 1 & 3: CHATBOT
@@ -375,6 +393,7 @@ else:
                 with st.chat_message(msg["role"], avatar=icon):
                     st.markdown(msg["content"])
 
+        # MOBILE SCROLL & WAKE LOCK
         scroll_script = """
         <script>
             document.addEventListener('DOMContentLoaded', (event) => {
