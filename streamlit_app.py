@@ -48,7 +48,7 @@ LOG_FILE = "mission_logs.csv"
 LOGO_FILENAME = "logo.png"
 
 # =========================================================
-# 2. HELPER FUNCTIONS (NOW WITH SAVE SYSTEM)
+# 2. HELPER FUNCTIONS (NOW WITH EMAIL)
 # =========================================================
 def play_win_sound():
     sound_url = "https://www.soundjay.com/sci-fi/sounds/sci-fi-charge-up-01.mp3"
@@ -58,9 +58,9 @@ def play_win_sound():
     )
 
 def init_log_file():
-    # If file doesn't exist, create it with 'Level' column
+    # If file doesn't exist, create it with ALL columns
     if not os.path.exists(LOG_FILE):
-        df = pd.DataFrame(columns=["Name", "Status", "Level", "Time_Seconds", "Timestamp"])
+        df = pd.DataFrame(columns=["Name", "Email", "Phone", "College", "Status", "Level", "Time_Seconds", "Timestamp"])
         df.to_csv(LOG_FILE, index=False)
 
 def get_player_progress(name):
@@ -71,11 +71,20 @@ def get_player_progress(name):
     # Check if name exists
     if name in df["Name"].values:
         user_row = df[df["Name"] == name].iloc[0]
-        return int(user_row["Level"]) # Return saved level
-    else:
-        # New player: Add them at Level 1
+        return int(user_row["Level"]) 
+    return 1 # Default start
+
+def register_participant(name, email, phone, college):
+    """Saves new player details."""
+    init_log_file()
+    df = pd.read_csv(LOG_FILE)
+    
+    if name not in df["Name"].values:
         new_entry = pd.DataFrame([{
             "Name": name, 
+            "Email": email,
+            "Phone": phone,
+            "College": college,
             "Status": "Started", 
             "Level": 1, 
             "Time_Seconds": 0, 
@@ -83,7 +92,6 @@ def get_player_progress(name):
         }])
         df = pd.concat([df, new_entry], ignore_index=True)
         df.to_csv(LOG_FILE, index=False)
-        return 1 # Start at Level 1
 
 def save_progress(name, new_level):
     """Updates the player's level in the CSV."""
@@ -99,7 +107,6 @@ def update_winner(name, elapsed_seconds):
     df = pd.read_csv(LOG_FILE)
     if name in df["Name"].values:
         idx = df[df["Name"] == name].index[0]
-        # Only update if not already complete
         if df.at[idx, "Status"] != "MISSION COMPLETE":
             df.at[idx, "Status"] = "MISSION COMPLETE"
             df.at[idx, "Time_Seconds"] = elapsed_seconds
@@ -273,13 +280,46 @@ if st.session_state.user_name == "":
         st.markdown("<br><br>", unsafe_allow_html=True)
         if os.path.exists(LOGO_FILENAME): st.image(LOGO_FILENAME, width=150)
         st.title("SENTINEL-X")
-        st.markdown("### ENTER CANDIDATE ID")
-        name_input = st.text_input("Name", placeholder="TYPE NAME...")
+        st.markdown("### 📝 SPOT REGISTRATION")
         
-        # --- ADMIN PANEL ---
-        if name_input == "SHOW-ME-THE-LOGS":
-            st.markdown("## 🕵️ ADMIN PANEL")
-            if os.path.exists(LOG_FILE): 
+        # --- NEW REGISTRATION FORM ---
+        with st.form("registration_form"):
+            name_input = st.text_input("FULL NAME", placeholder="Enter your name...")
+            email_input = st.text_input("EMAIL", placeholder="Enter your email...")
+            phone_input = st.text_input("PHONE NUMBER", placeholder="Enter phone number...")
+            college_input = st.text_input("COLLEGE / SCHOOL NAME", placeholder="Type 'Not Studying' if applicable...")
+            
+            submitted = st.form_submit_button("🚀 REGISTER & START MISSION", type="primary")
+            
+            if submitted:
+                # ADMIN CHECK
+                if name_input == "SHOW-ME-THE-LOGS":
+                    st.session_state.is_admin = True
+                    st.rerun() # Refresh to show admin panel
+                
+                # VALIDATION
+                elif name_input.strip() and email_input.strip() and phone_input.strip() and college_input.strip():
+                    st.session_state.user_name = name_input
+                    st.session_state.start_time = time.time()
+                    
+                    # Register User in DB
+                    register_participant(name_input, email_input, phone_input, college_input)
+                    
+                    # Check for Save Game
+                    saved_level = get_player_progress(name_input)
+                    st.session_state.level = saved_level
+                    
+                    if saved_level > 1:
+                        st.toast(f"WELCOME BACK {name_input}. RESUMING LEVEL {saved_level}...")
+                        time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error("⚠️ PLEASE FILL ALL FIELDS!")
+
+        # --- ADMIN PANEL LOGIC ---
+        if st.session_state.get("is_admin", False):
+             st.markdown("## 🕵️ ADMIN PANEL")
+             if os.path.exists(LOG_FILE): 
                 df = pd.read_csv(LOG_FILE)
                 st.dataframe(df)
                 col_dl, col_del = st.columns(2)
@@ -292,25 +332,8 @@ if st.session_state.user_name == "":
                         st.success("DATABASE WIPED.")
                         time.sleep(1)
                         st.rerun()
-            else:
-                st.warning("No logs found yet.")
-            st.stop()
-            
-        if st.button("INITIATE SEQUENCE", type="primary", use_container_width=True):
-            if name_input.strip() != "":
-                # --- RESUME GAME LOGIC ---
-                st.session_state.user_name = name_input
-                st.session_state.start_time = time.time()
-                
-                # Retrieve Saved Level (Or Start New)
-                saved_level = get_player_progress(name_input)
-                st.session_state.level = saved_level
-                
-                if saved_level > 1:
-                    st.toast(f"WELCOME BACK COMMANDER {name_input}. RESUMING LEVEL {saved_level}...")
-                    time.sleep(1)
-                
-                st.rerun()
+             else:
+                st.warning("No logs found.")
 else:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
