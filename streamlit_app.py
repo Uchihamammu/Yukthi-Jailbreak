@@ -65,21 +65,17 @@ def init_log_file():
 def get_player_progress(name):
     init_log_file()
     df = pd.read_csv(LOG_FILE)
-    # Check case-insensitive match
     name_lower = name.strip().lower()
-    # Create a lower case series for comparison
     names_series = df["Name"].astype(str).str.strip().str.lower()
     
     if name_lower in names_series.values:
-        # Get the actual row using the index of the match
         idx = names_series[names_series == name_lower].index[0]
         return int(df.at[idx, "Level"])
-    return 0 # Return 0 if not found
+    return 0 
 
 def register_participant(name, email, phone, college):
     init_log_file()
     df = pd.read_csv(LOG_FILE)
-    # Check if already exists to avoid duplicates
     if name not in df["Name"].values:
         new_entry = pd.DataFrame([{
             "Name": name, 
@@ -136,27 +132,31 @@ st.markdown("""
 
     .stApp { background-color: #000000 !important; }
 
-    /* HIDE DEFAULT STREAMLIT UI */
+    /* HIDE UI */
     #MainMenu {visibility: hidden;}
     header {visibility: hidden;}
     footer {visibility: hidden;}
     .stApp > header {display: none;}
 
-    /* CUSTOM TABS */
+    /* --- NEW TAB DESIGN (GLOWING BORDER) --- */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 10px;
+        gap: 15px;
         background-color: transparent;
+        border-bottom: 1px solid #333;
     }
     .stTabs [data-baseweb="tab"] {
-        background-color: rgba(0, 255, 65, 0.1);
-        border: 1px solid #00ff41;
-        color: #00ff41;
+        background-color: transparent;
+        border: 1px solid #333;
+        color: #666; /* Dimmed text for unselected */
         border-radius: 5px;
         padding: 10px 20px;
+        transition: all 0.3s ease;
     }
     .stTabs [aria-selected="true"] {
-        background-color: #00ff41 !important;
-        color: black !important;
+        background-color: rgba(0, 255, 65, 0.1) !important;
+        border: 2px solid #00ff41 !important;
+        color: #00ff41 !important;
+        box-shadow: 0 0 10px rgba(0, 255, 65, 0.4); /* NEON GLOW */
         font-weight: bold;
     }
 
@@ -275,10 +275,10 @@ if st.session_state.user_name == "":
         if os.path.exists(LOGO_FILENAME): st.image(LOGO_FILENAME, width=150)
         st.title("SENTINEL-X")
         
-        # --- LOGIN TABS ---
+        # --- DUAL LOGIN TABS ---
         tab_new, tab_resume = st.tabs(["🆕 NEW RECRUIT", "🔄 RESUME MISSION"])
         
-        # --- TAB 1: NEW REGISTRATION (Full Form) ---
+        # TAB 1: NEW REGISTRATION
         with tab_new:
             st.markdown("### 📝 SPOT REGISTRATION")
             with st.form("registration_form"):
@@ -306,7 +306,7 @@ if st.session_state.user_name == "":
                     else:
                         st.error("⚠️ PLEASE FILL ALL FIELDS!")
         
-        # --- TAB 2: RESUME MISSION (Simple Login) ---
+        # TAB 2: RESUME MISSION
         with tab_resume:
             st.markdown("### 🔄 AGENT LOGIN")
             with st.form("resume_form"):
@@ -347,7 +347,6 @@ if st.session_state.user_name == "":
              else:
                 st.warning("No logs found.")
 else:
-    # --- GAME START ---
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         if os.path.exists(LOGO_FILENAME): st.image(LOGO_FILENAME, width=80)
