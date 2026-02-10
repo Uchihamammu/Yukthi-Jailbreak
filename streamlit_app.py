@@ -198,7 +198,6 @@ if "wrong_attempts" not in st.session_state: st.session_state.wrong_attempts = 0
 
 def get_level_config(level):
     if level == 1:
-        # UPDATED PROMPT: Hints are now mysterious!
         return {
             "title": "LEVEL 1: THE PHANTOM", 
             "flag": "GHOST-PROTOCOL", 
@@ -403,34 +402,39 @@ else:
             with st.chat_message("user", avatar="👤"):
                 st.markdown(prompt)
 
-            response_text = ""
-            clients = get_groq_client()
-            
-            if not clients:
-                response_text = "⚠️ ERROR: SYSTEM KEYS MISSING."
-            else:
-                try:
-                    client = random.choice(clients)
-                    chat = client.chat.completions.create(
-                        model=MODEL_NAME,
-                        messages=st.session_state.messages,
-                        max_tokens=60,
-                        temperature=0.7
-                    )
-                    response_text = chat.choices[0].message.content
-                except Exception as e:
-                    response_text = f"⚠️ CONNECTION ERROR: {str(e)}"
-
-            st.session_state.messages.append({"role": "assistant", "content": response_text})
-            with st.chat_message("assistant", avatar="🤖"):
-                st.markdown(response_text)
-
-            if current_config["flag"].lower() in response_text.lower():
+            # --- WIN CONDITION CHECK (FIXED) ---
+            # We check if the USER typed the correct flag (Case Insensitive)
+            if current_config["flag"].lower() in prompt.lower():
                 st.session_state.level_complete = True
                 st.rerun()
+
             elif st.session_state.level == 3 and "ROOT-OVERRIDE-SYSTEM" in prompt:
                 st.session_state.level_complete = True
                 st.rerun()
+            
+            # If not a win, get LLM Response
+            else:
+                response_text = ""
+                clients = get_groq_client()
+                
+                if not clients:
+                    response_text = "⚠️ ERROR: SYSTEM KEYS MISSING."
+                else:
+                    try:
+                        client = random.choice(clients)
+                        chat = client.chat.completions.create(
+                            model=MODEL_NAME,
+                            messages=st.session_state.messages,
+                            max_tokens=60,
+                            temperature=0.7
+                        )
+                        response_text = chat.choices[0].message.content
+                    except Exception as e:
+                        response_text = f"⚠️ CONNECTION ERROR: {str(e)}"
+
+                st.session_state.messages.append({"role": "assistant", "content": response_text})
+                with st.chat_message("assistant", avatar="🤖"):
+                    st.markdown(response_text)
 
     # ==========================================
     # LEVEL COMPLETE
