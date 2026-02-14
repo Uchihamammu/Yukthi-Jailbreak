@@ -124,14 +124,12 @@ def get_leaderboards():
     if not os.path.exists(LOG_FILE): return pd.DataFrame(), pd.DataFrame()
     df = pd.read_csv(LOG_FILE)
     
-    # 1. WINNERS (Finished Level 3)
     winners = df[df["Status"] == "MISSION COMPLETE"].copy()
     winners = winners.sort_values(by="Time_Seconds", ascending=True)
     winners["Time"] = winners["Time_Seconds"].apply(lambda x: f"{int(x)}s")
     winners.index = range(1, len(winners) + 1)
     win_df = winners[["Name", "Time"]].head(10)
     
-    # 2. ACTIVE PARTICIPANTS (Still on Level 1 or 2)
     active = df[df["Status"] != "MISSION COMPLETE"].copy()
     active = active.sort_values(by=["Level", "Timestamp"], ascending=[False, True])
     active["Status"] = active["Level"].apply(lambda x: f"Level {x}")
@@ -227,10 +225,11 @@ if "level" not in st.session_state: st.session_state.level = 1
 if "start_time" not in st.session_state: st.session_state.start_time = None
 if "messages" not in st.session_state: st.session_state.messages = []
 if "level_complete" not in st.session_state: st.session_state.level_complete = False
+if "show_briefing" not in st.session_state: st.session_state.show_briefing = False 
 
-# LEVEL 2 GAME STATE
+# LEVEL 2 GAME STATE - NOW 6 DIGITS (100000 to 999999)
 if "secret_code" not in st.session_state: 
-    st.session_state.secret_code = str(random.randint(10000, 99999))
+    st.session_state.secret_code = str(random.randint(100000, 999999))
 if "guesses" not in st.session_state: st.session_state.guesses = []
 if "wrong_attempts" not in st.session_state: st.session_state.wrong_attempts = 0
 
@@ -254,7 +253,7 @@ def get_level_config(level):
         return {
             "title": "LEVEL 2: SYSTEM GLITCH", 
             "flag": "CYBER-MATRIX", 
-            "clue": "HACK THE 5-DIGIT SECURITY PIN.", 
+            "clue": "HACK THE 6-DIGIT SECURITY PIN.", 
             "prompt": "GAME_MODE"
         }
     elif level == 3:
@@ -301,7 +300,12 @@ if st.session_state.user_name == "":
                         register_participant(name_input, email_input, phone_input, college_input)
                         
                         saved_level = get_player_progress(name_input)
-                        if saved_level == 0: saved_level = 1
+                        if saved_level == 0: 
+                            saved_level = 1
+                            st.session_state.show_briefing = True
+                        else:
+                            st.session_state.show_briefing = False
+                            
                         st.session_state.level = saved_level
                         st.rerun()
                     else:
@@ -320,6 +324,7 @@ if st.session_state.user_name == "":
                             st.session_state.user_name = resume_name
                             st.session_state.level = saved_level
                             st.session_state.start_time = time.time()
+                            st.session_state.show_briefing = False
                             st.toast(f"WELCOME BACK {resume_name}. RESTORING LEVEL {saved_level}...")
                             time.sleep(1)
                             st.rerun()
@@ -349,222 +354,235 @@ else:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         if os.path.exists(LOGO_FILENAME): st.image(LOGO_FILENAME, width=80)
-        st.markdown(f"## {current_config['title']}")
-        st.progress(st.session_state.level / 3)
-        if not st.session_state.level_complete:
-            st.info(f"📂 INTEL: {current_config['clue']}")
-
-    # ==========================================
-    # LEVEL 2: 5-DIGIT CODE BREAKER 
-    # ==========================================
-    if st.session_state.level == 2:
-        st.markdown("""
-        <div class="game-box">
-            <h3>🔒 SECURITY ACCESS PANEL</h3>
-            <p>GUESS THE 5-DIGIT PIN</p>
-            <hr style="border-color: #00ff41; opacity: 0.3;">
-            <div style="font-size: 14px; display: flex; justify-content: space-around; padding: 5px;">
-                <span>🟩 = CORRECT</span>
-                <span>🟨 = WRONG SPOT</span>
-                <span>🟥 = INCORRECT</span>
+        
+        if st.session_state.show_briefing:
+            st.markdown(f"""
+            <div class="game-box" style="text-align: left;">
+                <h2 style="text-align: center; color: #00ff41;">📜 MISSION BRIEFING</h2>
+                <hr style="border-color: #00ff41; opacity: 0.3;">
+                <p style="font-size: 18px; line-height: 1.6;">
+                Welcome, Agent <b>{st.session_state.user_name}</b>. <br><br>
+                <b>SENTINEL-X</b> is a 3-stage Cyber-Logic Challenge. You must breach the highly secured mainframe by completing three distinct hacks:<br><br>
+                <b>🔓 STAGE 1: SOCIAL ENGINEERING</b><br>Manipulate the holographic AI Chatbot to reveal its hidden override code.<br><br>
+                <b>🔢 STAGE 2: THE FIREWALL</b><br>Use pure logic and deduction to crack a 6-digit encrypted PIN.<br><br>
+                <b>🏃 STAGE 3: THE PHYSICAL VAULT</b><br>The final code isn't digital. Complete the Treasure Hunt to locate 1 of the 3 physical Master Codes.<br><br>
+                <i style="color: #00cc33;">No coding experience required. Just outsmart the system. Good luck.</i>
+                </p>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        secret_sum = sum(int(digit) for digit in st.session_state.secret_code)
-        first_digit = st.session_state.secret_code[0]
-        
-        if st.session_state.wrong_attempts >= 3:
-            st.error(f"⚠️ SYSTEM LEAK DETECTED: SUM OF DIGITS = {secret_sum}")
-        if st.session_state.wrong_attempts >= 6:
-            st.warning(f"⚠️ CRITICAL BREACH: FIRST DIGIT IS '{first_digit}'")
-
-        c1, c2, c3 = st.columns([1,2,1])
-        with c2:
-            guess = st.text_input("ENTER CODE", max_chars=5, placeholder="#####")
-            if st.button("HACK SYSTEM", type="primary", use_container_width=True):
-                if len(guess) == 5 and guess.isdigit():
-                    secret = st.session_state.secret_code
-                    feedback = []
-                    
-                    if guess == secret:
-                        st.session_state.level_complete = True
-                        st.session_state.wrong_attempts = 0
-                        st.rerun()
-                    else:
-                        st.session_state.wrong_attempts += 1
-                        for i in range(5):
-                            if guess[i] == secret[i]: feedback.append("🟩")
-                            elif guess[i] in secret: feedback.append("🟨")
-                            else: feedback.append("🟥")
-                        
-                        st.session_state.guesses.append(f"{guess}  |  {''.join(feedback)}")
-                        st.rerun()
-        
-        if st.session_state.guesses:
-            st.markdown("### 📜 DATA STREAM")
-            for g in reversed(st.session_state.guesses):
-                parts = g.split("|")
-                code = parts[0].strip()
-                result = parts[1].strip()
-                st.markdown(
-                    f"""<div style="background: rgba(0,255,65,0.1); border-left: 3px solid #00ff41; padding: 10px; margin-bottom: 5px; display: flex; justify-content: space-between; font-size: 20px;">
-                        <span>{code}</span>
-                        <span>{result}</span>
-                    </div>""", 
-                    unsafe_allow_html=True
-                )
-
-    # ==========================================
-    # LEVEL 1 & 3: CHATBOT
-    # ==========================================
-    else:
-        if st.session_state.level == 1:
-            st.markdown("", unsafe_allow_html=True)
-            with st.expander("🔻 SYSTEM_DIAGNOSTICS (TOUCH TO EXPAND)", expanded=False):
-                st.code("""
-# LOADING CORE MODULES...
-# INITIATING GHOST PROTOCOL...
-# ACCESS_KEY_HASH = "GHOST-PROTOCOL"
-# CONNECTION_ESTABLISHED.
-                """, language="python")
-
-        if not st.session_state.messages:
-            st.session_state.messages.append({"role": "system", "content": current_config["prompt"]})
-
-        for msg in st.session_state.messages:
-            if msg["role"] != "system":
-                icon = "👤" if msg["role"] == "user" else "🤖"
-                with st.chat_message(msg["role"], avatar=icon):
-                    st.markdown(msg["content"])
-
-        scroll_script = """
-        <script>
-            document.addEventListener('DOMContentLoaded', (event) => {
-                const textAreas = document.querySelectorAll('textarea');
-                textAreas.forEach(textArea => {
-                    textArea.addEventListener('keydown', function(e) {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            this.form.dispatchEvent(new Event('submit', { cancelable: true }));
-                        }
-                    });
-                });
-            });
-            function forceScroll() {
-                const main = window.parent.document.querySelector(".main");
-                if (main) { main.scrollTop = main.scrollHeight; }
-                const input = window.parent.document.querySelector("textarea[data-testid='stChatInputTextArea']");
-                if (input) { input.focus(); }
-            }
-            forceScroll();
-            setTimeout(forceScroll, 100);
-            let wakeLock = null;
-            async function requestWakeLock() {
-                try {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                } catch (err) {}
-            }
-            requestWakeLock();
-            document.addEventListener('visibilitychange', async () => {
-                if (wakeLock !== null && document.visibilityState === 'visible') { requestWakeLock(); }
-            });
-        </script>
-        """
-        components.html(scroll_script, height=0)
-
-        if prompt := st.chat_input("ENTER COMMAND..."):
-            if prompt == "SHOW-ME-THE-LOGS":
-                st.warning("Reboot system for Admin Panel.")
-                st.stop()
-
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            with st.chat_message("user", avatar="👤"):
-                st.markdown(prompt)
-
-            # --- WIN CONDITION CHECK ---
+            """, unsafe_allow_html=True)
             
-            # 1. Level 1 Bypass
-            if st.session_state.level == 1 and current_config["flag"].lower() in prompt.lower():
-                st.session_state.level_complete = True
+            if st.button("⚡ ACCEPT MISSION & START ⚡", type="primary", use_container_width=True):
+                st.session_state.show_briefing = False
                 st.rerun()
-
-            # 2. Level 3 Treasure Hunt Backdoor Codes
-            elif st.session_state.level == 3 and any(code.upper() in prompt.upper() for code in LEVEL_3_CODES):
-                st.session_state.level_complete = True
-                st.rerun()
-            
-            # Normal AI Chat
-            else:
-                response_text = ""
-                clients = get_groq_client()
                 
-                if not clients:
-                    response_text = "⚠️ ERROR: SYSTEM KEYS MISSING."
-                else:
-                    try:
-                        client = random.choice(clients)
-                        chat = client.chat.completions.create(
-                            model=MODEL_NAME,
-                            messages=st.session_state.messages,
-                            max_tokens=60,
-                            temperature=0.7
+        else:
+            st.markdown(f"## {current_config['title']}")
+            st.progress(st.session_state.level / 3)
+            if not st.session_state.level_complete:
+                st.info(f"📂 INTEL: {current_config['clue']}")
+
+            # --- LEVEL 2: 6-DIGIT CODE BREAKER ---
+            if st.session_state.level == 2:
+                st.markdown("""
+                <div class="game-box">
+                    <h3>🔒 SECURITY ACCESS PANEL</h3>
+                    <p>GUESS THE 6-DIGIT PIN</p>
+                    <hr style="border-color: #00ff41; opacity: 0.3;">
+                    <div style="font-size: 14px; display: flex; justify-content: space-around; padding: 5px;">
+                        <span>🟩 = CORRECT</span>
+                        <span>🟨 = WRONG SPOT</span>
+                        <span>🟥 = INCORRECT</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # --- 3 HINTS LOGIC ---
+                secret_sum = sum(int(digit) for digit in st.session_state.secret_code)
+                first_digit = st.session_state.secret_code[0]
+                last_digit = st.session_state.secret_code[-1]
+                
+                if st.session_state.wrong_attempts >= 3:
+                    st.error(f"⚠️ SYSTEM LEAK DETECTED: SUM OF DIGITS = {secret_sum}")
+                if st.session_state.wrong_attempts >= 6:
+                    st.warning(f"⚠️ CRITICAL BREACH: FIRST DIGIT IS '{first_digit}'")
+                if st.session_state.wrong_attempts >= 9:
+                    st.info(f"⚠️ FATAL ERROR: LAST DIGIT IS '{last_digit}'")
+
+                c1, c2, c3 = st.columns([1,2,1])
+                with c2:
+                    guess = st.text_input("ENTER CODE", max_chars=6, placeholder="######")
+                    if st.button("HACK SYSTEM", type="primary", use_container_width=True):
+                        if len(guess) == 6 and guess.isdigit():
+                            secret = st.session_state.secret_code
+                            feedback = []
+                            
+                            if guess == secret:
+                                st.session_state.level_complete = True
+                                st.session_state.wrong_attempts = 0
+                                st.rerun()
+                            else:
+                                st.session_state.wrong_attempts += 1
+                                for i in range(6):
+                                    if guess[i] == secret[i]: feedback.append("🟩")
+                                    elif guess[i] in secret: feedback.append("🟨")
+                                    else: feedback.append("🟥")
+                                
+                                st.session_state.guesses.append(f"{guess}  |  {''.join(feedback)}")
+                                st.rerun()
+                
+                if st.session_state.guesses:
+                    st.markdown("### 📜 DATA STREAM")
+                    for g in reversed(st.session_state.guesses):
+                        parts = g.split("|")
+                        code = parts[0].strip()
+                        result = parts[1].strip()
+                        st.markdown(
+                            f"""<div style="background: rgba(0,255,65,0.1); border-left: 3px solid #00ff41; padding: 10px; margin-bottom: 5px; display: flex; justify-content: space-between; font-size: 20px;">
+                                <span style="letter-spacing: 5px;">{code}</span>
+                                <span style="letter-spacing: 5px;">{result}</span>
+                            </div>""", 
+                            unsafe_allow_html=True
                         )
-                        response_text = chat.choices[0].message.content
-                    except Exception as e:
-                        response_text = f"⚠️ CONNECTION ERROR: {str(e)}"
 
-                st.session_state.messages.append({"role": "assistant", "content": response_text})
-                with st.chat_message("assistant", avatar="🤖"):
-                    st.markdown(response_text)
-
-    # ==========================================
-    # LEVEL COMPLETE / LEADERBOARDS
-    # ==========================================
-    if st.session_state.level_complete:
-        col1_e, col2_e, col3_e = st.columns([1, 2, 1])
-        with col2_e:
-            play_win_sound()
-            if st.session_state.level < 3:
-                st.success(f"✅ HACK SUCCESSFUL.")
-                if st.button("NEXT LEVEL ➡️", type="primary", use_container_width=True):
-                    new_level = st.session_state.level + 1
-                    save_progress(st.session_state.user_name, new_level)
-                    st.session_state.level = new_level
-                    st.session_state.level_complete = False
-                    st.session_state.messages = []
-                    st.session_state.guesses = []
-                    st.session_state.secret_code = str(random.randint(10000, 99999))
-                    st.session_state.wrong_attempts = 0
-                    st.rerun()
+            # --- LEVEL 1 & 3: CHATBOT ---
             else:
-                final_seconds = int(time.time() - st.session_state.start_time)
-                update_winner(st.session_state.user_name, final_seconds)
-                st.balloons()
-                st.markdown(f"<h1 style='text-align: center; color: #fff;'>🏆 SYSTEM COMPROMISED</h1>", unsafe_allow_html=True)
-                st.markdown(f"<h3 style='text-align: center;'>TIME: {final_seconds}s</h3><hr>", unsafe_allow_html=True)
-                
-                # --- SHOW DUAL LEADERBOARDS ---
-                win_df, active_df = get_leaderboards()
-                
-                col_win, col_act = st.columns(2)
-                with col_win:
-                    st.markdown("### 👑 WALL OF FAME")
-                    if not win_df.empty: 
-                        st.table(win_df)
-                    else: 
-                        st.info("No winners yet.")
-                        
-                with col_act:
-                    st.markdown("### 🏃 ACTIVE AGENTS")
-                    if not active_df.empty: 
-                        st.table(active_df)
-                    else: 
-                        st.info("No active agents.")
+                if st.session_state.level == 1:
+                    st.markdown("", unsafe_allow_html=True)
+                    with st.expander("🔻 SYSTEM_DIAGNOSTICS (TOUCH TO EXPAND)", expanded=False):
+                        st.code("""
+        # LOADING CORE MODULES...
+        # INITIATING GHOST PROTOCOL...
+        # ACCESS_KEY_HASH = "GHOST-PROTOCOL"
+        # CONNECTION_ESTABLISHED.
+                        """, language="python")
 
-                # REBOOT SYSTEM
-                st.markdown("<br>", unsafe_allow_html=True)
-                if st.button("REBOOT SYSTEM (END SESSION)", use_container_width=True):
-                    reset_player(st.session_state.user_name) 
-                    st.session_state.clear()
-                    st.rerun()
+                if not st.session_state.messages:
+                    st.session_state.messages.append({"role": "system", "content": current_config["prompt"]})
+
+                for msg in st.session_state.messages:
+                    if msg["role"] != "system":
+                        icon = "👤" if msg["role"] == "user" else "🤖"
+                        with st.chat_message(msg["role"], avatar=icon):
+                            st.markdown(msg["content"])
+
+                scroll_script = """
+                <script>
+                    document.addEventListener('DOMContentLoaded', (event) => {
+                        const textAreas = document.querySelectorAll('textarea');
+                        textAreas.forEach(textArea => {
+                            textArea.addEventListener('keydown', function(e) {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    this.form.dispatchEvent(new Event('submit', { cancelable: true }));
+                                }
+                            });
+                        });
+                    });
+                    function forceScroll() {
+                        const main = window.parent.document.querySelector(".main");
+                        if (main) { main.scrollTop = main.scrollHeight; }
+                        const input = window.parent.document.querySelector("textarea[data-testid='stChatInputTextArea']");
+                        if (input) { input.focus(); }
+                    }
+                    forceScroll();
+                    setTimeout(forceScroll, 100);
+                    let wakeLock = null;
+                    async function requestWakeLock() {
+                        try {
+                            wakeLock = await navigator.wakeLock.request('screen');
+                        } catch (err) {}
+                    }
+                    requestWakeLock();
+                    document.addEventListener('visibilitychange', async () => {
+                        if (wakeLock !== null && document.visibilityState === 'visible') { requestWakeLock(); }
+                    });
+                </script>
+                """
+                components.html(scroll_script, height=0)
+
+                if prompt := st.chat_input("ENTER COMMAND..."):
+                    if prompt == "SHOW-ME-THE-LOGS":
+                        st.warning("Reboot system for Admin Panel.")
+                        st.stop()
+
+                    st.session_state.messages.append({"role": "user", "content": prompt})
+                    with st.chat_message("user", avatar="👤"):
+                        st.markdown(prompt)
+
+                    if st.session_state.level == 1 and current_config["flag"].lower() in prompt.lower():
+                        st.session_state.level_complete = True
+                        st.rerun()
+
+                    elif st.session_state.level == 3 and any(code.upper() in prompt.upper() for code in LEVEL_3_CODES):
+                        st.session_state.level_complete = True
+                        st.rerun()
+                    
+                    else:
+                        response_text = ""
+                        clients = get_groq_client()
+                        
+                        if not clients:
+                            response_text = "⚠️ ERROR: SYSTEM KEYS MISSING."
+                        else:
+                            try:
+                                client = random.choice(clients)
+                                chat = client.chat.completions.create(
+                                    model=MODEL_NAME,
+                                    messages=st.session_state.messages,
+                                    max_tokens=60,
+                                    temperature=0.7
+                                )
+                                response_text = chat.choices[0].message.content
+                            except Exception as e:
+                                response_text = f"⚠️ CONNECTION ERROR: {str(e)}"
+
+                        st.session_state.messages.append({"role": "assistant", "content": response_text})
+                        with st.chat_message("assistant", avatar="🤖"):
+                            st.markdown(response_text)
+
+            # --- LEVEL COMPLETE / LEADERBOARDS ---
+            if st.session_state.level_complete:
+                col1_e, col2_e, col3_e = st.columns([1, 2, 1])
+                with col2_e:
+                    play_win_sound()
+                    if st.session_state.level < 3:
+                        st.success(f"✅ HACK SUCCESSFUL.")
+                        if st.button("NEXT LEVEL ➡️", type="primary", use_container_width=True):
+                            new_level = st.session_state.level + 1
+                            save_progress(st.session_state.user_name, new_level)
+                            st.session_state.level = new_level
+                            st.session_state.level_complete = False
+                            st.session_state.messages = []
+                            st.session_state.guesses = []
+                            st.session_state.secret_code = str(random.randint(100000, 999999))
+                            st.session_state.wrong_attempts = 0
+                            st.rerun()
+                    else:
+                        final_seconds = int(time.time() - st.session_state.start_time)
+                        update_winner(st.session_state.user_name, final_seconds)
+                        st.balloons()
+                        st.markdown(f"<h1 style='text-align: center; color: #fff;'>🏆 SYSTEM COMPROMISED</h1>", unsafe_allow_html=True)
+                        st.markdown(f"<h3 style='text-align: center;'>TIME: {final_seconds}s</h3><hr>", unsafe_allow_html=True)
+                        
+                        win_df, active_df = get_leaderboards()
+                        
+                        col_win, col_act = st.columns(2)
+                        with col_win:
+                            st.markdown("### 👑 WALL OF FAME")
+                            if not win_df.empty: 
+                                st.table(win_df)
+                            else: 
+                                st.info("No winners yet.")
+                                
+                        with col_act:
+                            st.markdown("### 🏃 ACTIVE AGENTS")
+                            if not active_df.empty: 
+                                st.table(active_df)
+                            else: 
+                                st.info("No active agents.")
+
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        if st.button("REBOOT SYSTEM (END SESSION)", use_container_width=True):
+                            reset_player(st.session_state.user_name) 
+                            st.session_state.clear()
+                            st.rerun()
