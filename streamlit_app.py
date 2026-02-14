@@ -139,7 +139,7 @@ def get_leaderboards():
     return win_df, active_df
 
 # =========================================================
-# 3. VISUAL ENHANCEMENTS (ROBOTIC THEME)
+# 3. VISUAL ENHANCEMENTS (ROBOTIC THEME + EMOJIS FIXED)
 # =========================================================
 st.markdown("""
 <style>
@@ -197,6 +197,21 @@ st.markdown("""
     }
     @keyframes star-fly { from { background-position: 0 0; } to { background-position: 1000px 1000px; } }
     
+    .rock { position: fixed; font-size: 40px; animation: float-rock 6s ease-in-out infinite alternate; z-index: 0; opacity: 0.8; }
+    .rock-1 { top: 10%; left: 10%; }
+    .rock-2 { top: 80%; left: 80%; animation-delay: 2s; }
+    .rock-3 { top: 40%; left: 90%; animation-delay: 1s; }
+    @keyframes float-rock { 0% { transform: translate(0, 0); } 100% { transform: translate(20px, 40px); } }
+
+    .planet { position: fixed; font-size: 80px; z-index: 0; opacity: 0.9; }
+    .planet-1 { bottom: 10%; left: 5%; animation: rotate-planet 100s linear infinite; }
+    .planet-2 { top: 15%; right: 10%; animation: float-planet 10s ease-in-out infinite alternate; }
+    @keyframes rotate-planet { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes float-planet { from { transform: translateY(0); } to { transform: translateY(-30px); } }
+
+    .rocket { position: fixed; font-size: 60px; z-index: 0; animation: fly-rocket 12s linear infinite; bottom: 20%; left: -10%; }
+    @keyframes fly-rocket { 0% { left: -10%; transform: rotate(45deg); } 100% { left: 110%; transform: rotate(45deg); } }
+    
     .game-box { border: 2px solid #00ff41; padding: 20px; background-color: rgba(0, 20, 0, 0.9); border-radius: 10px; text-align: center; margin-bottom: 20px; }
     
     .stTextInput input, .stChatInput input, textarea { background-color: #000 !important; color: #00ff41 !important; border: 1px solid #00ff41 !important; z-index: 1; }
@@ -204,6 +219,13 @@ st.markdown("""
     h1, h2, h3 { font-family: 'Orbitron', sans-serif !important; text-shadow: 0 0 10px #00ff41; z-index: 1; position: relative; }
     [data-testid="stImage"] { display: block; margin-left: auto; margin-right: auto; z-index: 1; position: relative; }
 </style>
+
+<div class="rock rock-1">🪨</div>
+<div class="rock rock-2">🪨</div>
+<div class="rock rock-3">🌑</div>
+<div class="planet planet-1">🪐</div>
+<div class="planet planet-2">🌍</div>
+<div class="rocket">🚀</div>
 """, unsafe_allow_html=True)
 
 # INJECT LOGO
@@ -297,16 +319,18 @@ if st.session_state.user_name == "":
                         st.session_state.user_name = name_input
                         st.session_state.start_time = time.time()
                         
+                        # --- INTRO BUG FIX: Check level BEFORE registering! ---
+                        saved_level = get_player_progress(name_input)
+                        
                         register_participant(name_input, email_input, phone_input, college_input)
                         
-                        saved_level = get_player_progress(name_input)
                         if saved_level == 0: 
-                            saved_level = 1
+                            st.session_state.level = 1
                             st.session_state.show_briefing = True
                         else:
+                            st.session_state.level = saved_level
                             st.session_state.show_briefing = False
                             
-                        st.session_state.level = saved_level
                         st.rerun()
                     else:
                         st.error("⚠️ PLEASE FILL ALL FIELDS!")
